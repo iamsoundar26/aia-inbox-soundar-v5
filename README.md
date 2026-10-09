@@ -1,7 +1,7 @@
-# AI Accountant · Inbox (Soundar) — Neo workspace, version 3
+# AI Accountant · Inbox (Soundar) — Neo workspace, version 4
 
-> **Status: ideation-stage concept, version 3.** Branched from v2 on 8 Oct 2026: v2 plus the chat redesign from the Ask Neo prototype.
-> Live: https://iamsoundar26.github.io/aia-inbox-soundar-v3/neo/ · Repo: https://github.com/iamsoundar26/aia-inbox-soundar-v3 (branch `v3`)
+> **Status: ideation-stage concept, version 4.** Branched from v2 on 8 Oct 2026: v2 plus the chat redesign from the Ask Neo prototype.
+> Live: https://iamsoundar26.github.io/aia-inbox-soundar-v4/neo/ · Repo: https://github.com/iamsoundar26/aia-inbox-soundar-v4 (branch `v3`)
 > v1 (the light-theme Neo side panel) is untouched and still reachable with Ctrl J / the floating side tab.
 
 ## What v2 adds
@@ -53,12 +53,12 @@ The workspace uses relative paths (`../_next/…`, `../images/logo.png`, `../inb
 
 ## Run locally
 
-    cd ..                                  # the folder that contains aia-inbox-soundar-v3
+    cd ..                                  # the folder that contains aia-inbox-soundar-v4
     python3 -m http.server 8000
-    # open http://localhost:8000/aia-inbox-soundar-v3/inbox/   (app, with Neo in the nav)
-    # open http://localhost:8000/aia-inbox-soundar-v3/neo/     (workspace directly)
+    # open http://localhost:8000/aia-inbox-soundar-v4/inbox/   (app, with Neo in the nav)
+    # open http://localhost:8000/aia-inbox-soundar-v4/neo/     (workspace directly)
 
-The build is currently homed at `/aia-inbox-soundar-v3` (see `.basepath`). Use `python3 set-base-path.py <prefix>` to re-home it.
+The build is currently homed at `/aia-inbox-soundar-v4` (see `.basepath`). Use `python3 set-base-path.py <prefix>` to re-home it.
 
 ## Prototype interactions that work
 
