@@ -1,8 +1,8 @@
 # AI Accountant · Inbox (Soundar) — Neo workspace, version 4
 
-> **Status: ideation-stage concept, version 4.** Branched from v2 on 8 Oct 2026: v2 plus the chat redesign from the Ask Neo prototype.
-> Live: https://iamsoundar26.github.io/aia-inbox-soundar-v4/neo/ · Repo: https://github.com/iamsoundar26/aia-inbox-soundar-v4 (branch `v3`)
-> v1 (the light-theme Neo side panel) is untouched and still reachable with Ctrl J / the floating side tab.
+> **Status: ideation-stage concept, version 4 (started 9 Oct 2026).** Branched from v3 (tag `v3.0`, commit `96c4b59`): the unified Neo experience (floating chat, expanded view and Neo tab share one sidebar, screens and chat instance).
+> Local only so far: no GitHub repo or Pages site yet. Branch `v4`, base path `/aia-inbox-soundar-v4`.
+> v1, v2 and v3 are untouched in their own folders.
 
 ## What v2 adds
 
