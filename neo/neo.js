@@ -195,19 +195,14 @@
     var p = r.parts[0] || "";
     function act(k) { return p === k ? " active" : ""; }
     var excN = openExc().length, runN = S.runs.filter(function (x) { return x.status === "running"; }).length;
+    var item = function (href, ic, label, on, badge) { return '<li><a href="' + href + '" class="' + (on ? "active" : "") + '"' + (on ? ' aria-current="page"' : "") + ">" + icon(ic, "sm") + '<span class="txt">' + label + "</span>" + (badge || "") + "</a></li>"; };
     return '<nav class="neonav" id="neonav" aria-label="Neo">' +
-      '<div class="head">' + icon("sparkle", "lg") + "<h1>NEO</h1></div>" +
       '<button class="new" data-go="#/chat/new">' + icon("plus") + "New chat</button>" +
-      RecentGroup(r) +
-      '<div class="group"><h2>Agents <button data-go="#/agents/new" aria-label="Create agent" title="Create agent">' + icon("plus", "sm") + "</button></h2><ul>" +
-      S.agents.map(function (a) { return '<li><a href="#/agents/' + a.id + '" class="' + (r.parts[1] === a.id ? "active" : "") + '">' + icon(a.icon, "sm") + '<span class="txt">' + esc(a.name) + "</span>" + (a.status === "running" ? '<span class="count run">running</span>' : "") + "</a></li>"; }).join("") +
-      '<li><a href="#/agents" class="' + (p === "agents" && !r.parts[1] ? "active" : "") + '">' + icon("user", "sm") + '<span class="txt">My agents</span></a></li>' +
-      '<li><a href="#/agents/new" class="' + (p === "agents" && r.parts[1] === "new" ? "active" : "") + '">' + icon("plus", "sm") + '<span class="txt">Create agent</span></a></li></ul></div>' +
-      '<div class="group"><h2>Work / Runs</h2><ul>' +
-      '<li><a href="#/runs?tab=running" class="' + (p === "runs" && (r.q.tab || "running") === "running" && !r.parts[1] ? "active" : "") + '">' + icon("clock", "sm") + '<span class="txt">Running</span><span class="count run">' + runN + "</span></a></li>" +
-      '<li><a href="#/attention" class="' + act("attention") + '">' + icon("alert", "sm") + '<span class="txt">Needs attention</span>' + (excN ? '<span class="count warn">' + excN + "</span>" : "") + "</a></li>" +
-      '<li><a href="#/runs?tab=completed" class="' + (p === "runs" && r.q.tab === "completed" ? "active" : "") + '">' + icon("check", "sm") + '<span class="txt">Completed</span></a></li></ul></div>' +
-      '<div class="group"><h2>Knowledge</h2><ul>' + ["Company context", "Accounting rules", "Vendors", "Chart of Accounts", "GST configuration"].map(function (k) { return '<li><a href="#/knowledge?s=' + encodeURIComponent(k) + '" class="' + (p === "knowledge" && r.q.s === k ? "active" : "") + '">' + icon("book", "sm") + '<span class="txt">' + k + "</span></a></li>"; }).join("") + "</ul></div>" +
+      '<div class="group"><ul>' +
+      item("#/agents", "bot", "Agents", p === "agents") +
+      item("#/runs?tab=running", "clock", "Activity", p === "runs" || p === "attention", excN ? '<span class="count warn">' + excN + "</span>" : "") +
+      item("#/knowledge", "book", "Knowledge", p === "knowledge") +
+      "</ul></div>" + RecentGroup(r) +
       '<div class="foot"><a href="#/settings" class="' + act("settings") + '">' + icon("settings", "sm") + "Settings</a></div></nav>";
   }
   function Shell(view, r, isChat) {
@@ -217,8 +212,8 @@
     return '<div class="app">' + TopNav() + '<div class="frame">' + modnav + nav + '<main class="main" id="main">' + (isChat ? view : '<div class="scroll">' + view + "</div>") + "</main></div></div>" + '<div id="overlay"></div>';
   }
   function RecentGroup(r) {
-    return '<div class="group" id="recentGroup"><h2>Recent chats <button data-go="#/chat/new" aria-label="New chat" title="New chat">' + icon("plus", "sm") + "</button></h2><ul>" +
-      NeoChat.history().slice(0, 6).map(function (c) { return '<li><a href="#/chat/' + c.id + '" class="' + (r.parts[0] === "chat" && String(NeoChat.active()) === String(c.id) ? "active" : "") + '"><span class="em">' + ({ inbox: "🧾", attention: "⚠️", dups: "🔍", gst: "🧾", generic: "💬" }[c.sc] || "💬") + '</span><span class="txt">' + esc(c.title) + "</span></a></li>"; }).join("") + "</ul></div>";
+    return '<div class="group recent" id="recentGroup"><h2>Recent</h2><ul>' +
+      NeoChat.history().slice(0, 8).map(function (c) { return '<li><a href="#/chat/' + c.id + '" class="' + (r.parts[0] === "chat" && String(NeoChat.active()) === String(c.id) ? "active" : "") + '"><span class="txt">' + esc(c.title) + "</span></a></li>"; }).join("") + "</ul></div>";
   }
   function TopNav() {
     return '<header class="topnav"><div class="brand"><button class="menu-btn tn-link" id="menuBtn" aria-label="Open Neo navigation">' + icon("menu") + '</button><a href="../inbox/" aria-label="AI Accountant home"><img src="../images/logo.png" alt="AI Accountant" width="121" height="24"></a></div>' +
@@ -306,8 +301,10 @@
 
   /* ---------- AGENTS ---------- */
   function Agents() {
-    return '<div class="page wide"><div class="page-head"><div><h1>AI Agents</h1><p class="sub">Delegate accounting work to Neo. Each agent reads, suggests and only executes what you allow.</p></div><div class="actions"><a class="btn primary" href="#/agents/new">' + icon("plus", "sm") + 'Create agent</a></div></div><div class="agents-grid">' + S.agents.map(AgentCard).join("") + "</div>" +
-      '<section class="section"><div class="section-head"><h2>My agents</h2></div>' + EmptyState("bot", "You haven't created a custom agent yet.", "Describe what it should do in plain language. No technical setup needed.", '<a class="btn primary" href="#/agents/new">Create your first agent</a>') + "</section></div>";
+    return '<div class="page"><div class="page-head"><div><h1>Agents</h1><p class="sub">Neo agents do accounting work for you. Anything that changes your books waits for your approval.</p></div><div class="actions"><a class="btn primary" href="#/agents/new">' + icon("plus", "sm") + 'New agent</a></div></div>' +
+      '<div class="card list">' + S.agents.map(function (a) {
+        return '<div class="arow"><a class="ainfo" href="#/agents/' + a.id + '"><span class="ico">' + icon(a.icon) + "</span><span><b>" + esc(a.name) + "</b><small>" + esc(a.short) + '</small></span></a><span class="ast">' + (a.status === "running" ? "Running" : "Ready") + '</span><button class="btn sm" data-run="' + a.id + '">Run</button></div>';
+      }).join("") + "</div></div>";
   }
   function AgentDetail(id) {
     var a = agent(id); if (!a) return Agents();

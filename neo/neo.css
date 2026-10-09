@@ -464,3 +464,16 @@ body.mod-collapsed .neo-scope .modnav .collapse svg { transform: scaleX(-1); }
 @media (max-width: 640px) {
 .neo-scope .neo-panel { width: 100vw; }
 }
+
+/* v4 simplified nav and lists */
+.neo-scope .neonav .new { margin: 12px 12px 8px; }
+.neo-scope .neonav .group.recent { flex: 1; min-height: 0; overflow-y: auto; }
+.neo-scope .neonav .group > h2 { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; }
+.neo-scope .neonav .foot { margin-top: auto; border-top: 1px solid var(--line); padding: 8px 12px; }
+.neo-scope .arow { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.neo-scope .arow:last-child { border-bottom: 0; }
+.neo-scope .arow .ainfo { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.neo-scope .arow .ico { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--ai); color: var(--ai-ink); flex: none; }
+.neo-scope .arow b { display: block; font-size: 14px; font-weight: 600; }
+.neo-scope .arow small { display: block; font-size: 13px; color: var(--ink-2); }
+.neo-scope .arow .ast { font-size: 12px; color: var(--ink-2); }

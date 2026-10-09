@@ -83,7 +83,7 @@
   function nowLabel() { var d = new Date(), h = d.getHours(), m = d.getMinutes(); return ((h % 12) || 12) + ":" + (m < 10 ? "0" : "") + m + (h < 12 ? " am" : " pm"); }
 
   /* Neo workspace (nav + screens) is the Neo page's own code, loaded lazily so the expanded view and the Neo tab are literally the same UI. */
-  var NEO_V = "13";
+  var NEO_V = "14";
   function loadWS(cb) {
     if (window.NeoWorkspace) return cb();
     if (loadWS.q) { loadWS.q.push(cb); return; }
@@ -108,7 +108,7 @@
     root.innerHTML =
       '<aside class="nc-hist" aria-label="Chat history" hidden><div class="nc-hhead"><h2>History</h2><button class="nc-ibtn" type="button" data-hclose aria-label="Close history">' + X + '</button></div>' +
       '<div class="nc-hbar"><button class="nc-newbtn" type="button" data-new>' + PLUS + 'New chat</button><div class="nc-hsearch">' + SEARCH + '<label class="nc-sr" for="nc-hs-' + mode + '">Search chats</label><input id="nc-hs-' + mode + '" type="search" placeholder="Search chats" autocomplete="off"></div></div><div class="nc-hscroll" data-hlist></div><div class="neo-scope nc-wsnav" data-wsnav></div></aside>' +
-      '<div class="nc-chat"><header class="nc-head"><span class="nc-mark" aria-hidden="true">' + STAR + '</span><div class="nc-ttl"><b data-ttl>Neo</b><span>Accounting agent</span></div><span class="nc-beta">Beta</span>' +
+      '<div class="nc-chat"><header class="nc-head"><span class="nc-mark" aria-hidden="true">' + STAR + '</span><div class="nc-ttl"><b data-ttl>Neo</b></div>' +
       '<button class="nc-ibtn" type="button" data-histbtn aria-label="Chat history" aria-expanded="false">' + HISTI + '</button><button class="nc-ibtn" type="button" data-new aria-label="New chat">' + PEN + '</button>' +
       '<button class="nc-ibtn" type="button" data-expand aria-label="' + (mode === "full" ? "Minimize to floating chat" : "Expand Neo") + '">' + (mode === "full" ? COLLAPSE : EXPAND) + '</button><button class="nc-ibtn" type="button" data-close aria-label="Close Neo">' + X + "</button></header>" +
       '<div class="nc-thread" data-thread role="region" aria-label="Conversation with Neo" tabindex="0"></div>' +
@@ -225,9 +225,9 @@
         b.onclick = function () { start(s2[1]); }; st.append(b);
       });
       var h = new Date().getHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-      var home = el('<div class="nc-home"><h2>' + hi + ', Soundar <span aria-hidden="true">👋</span></h2><h2 class="nc-h2b">What would you like <b>Neo</b> to help with?</h2><p class="nc-sub">Your AI accounting workspace for Shakunthalam Oil &amp; Refineries</p><p class="nc-cap">Suggested actions</p><div class="nc-sgrid"></div></div>');
-      [["Review invoices", "Find invoices that need your attention", "inbox"], ["Find duplicates", "Identify possible duplicate bills", "dup"], ["Reconcile banking", "Find unmatched transactions", "alert"], ["Check GST", "Find GST mismatches and missing information", "alert"], ["Review AP", "See pending accounts payable work", "inbox"], ["Month-end closing", "Check what is still incomplete", "alert"]].forEach(function (c) {
-        var b = el('<button class="nc-scard" type="button"><b>' + c[0] + '</b><span>' + c[1] + "</span></button>"); b.onclick = function () { start(c[0]); }; home.querySelector(".nc-sgrid").append(b);
+      var home = el('<div class="nc-home"><h2>' + hi + ', Soundar</h2><p class="nc-sub">What would you like Neo to help with?</p><div class="nc-sgrid"></div></div>');
+      [["Review invoices", "Review all invoices uploaded today"], ["Find duplicates", "Find duplicate bills"], ["Reconcile banking", "Reconcile banking"], ["Automate a task", "I want to automate a task"]].forEach(function (c) {
+        var b = el('<button class="nc-scard" type="button">' + c[0] + "</button>"); b.onclick = function () { start(c[1]); }; home.querySelector(".nc-sgrid").append(b);
       });
       e.append(home); thread.append(e);
     }
