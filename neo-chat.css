@@ -15,7 +15,7 @@
 .nc button { cursor: pointer; }
 .nc :focus-visible { outline: 2px solid var(--nc-accent); outline-offset: 2px; border-radius: 6px; }
 .nc .nc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.nc h2, .nc h3, .nc h4, .nc p, .nc ul, .nc ol, .nc dl { margin: 0; }
+.nc h1, .nc h2, .nc h3, .nc h4, .nc p, .nc ul, .nc ol, .nc dl { margin: 0; }
 .nc ul, .nc ol { padding: 0; list-style: none; }
 .nc svg { display: block; }
 
@@ -64,10 +64,7 @@
 .nc .nc-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--nc-line); min-height: 48px; }
 .nc .nc-mark, .nc-tab .nc-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--nc-accent); color: #fff; display: grid; place-items: center; flex: none; }
 .nc .nc-mark svg { width: 14px; height: 14px; }
-.nc .nc-ttl { flex: 1; min-width: 0; }
-.nc .nc-ttl b { display: block; font-size: 14px; line-height: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nc .nc-ttl span { display: block; color: var(--nc-muted); font-size: 12px; line-height: 14px; }
-.nc .nc-beta { background: var(--nc-accent-soft); color: var(--nc-accent); font-weight: 600; font-size: 11px; line-height: 16px; border-radius: 999px; padding: 0 8px; margin-right: 4px; }
+.nc .nc-ttl { flex: 1; min-width: 0; font-size: 14px; line-height: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* history + review panels: overlay in the side panel, docked in full view */
 .nc .nc-hist, .nc .nc-work { position: absolute; inset: 0; z-index: 5; background: var(--nc-bg); display: flex; flex-direction: column; animation: nc-fade var(--nc-med) var(--nc-ease); }
@@ -221,23 +218,25 @@ body.nc-host aside[aria-label="Neo"], body.nc-host button[title="Ask Neo (Ctrl J
 .nc .nc-thread:focus, .nc .nc-hhead h2:focus { outline: none; }
 .nc .nc-thread:focus-visible { outline: 2px solid var(--nc-accent-soft); outline-offset: -2px; border-radius: 0; }
 
-/* Neo sidebar inside the expanded view (matches the Neo page sidebar) */
-
 /* Home look of the empty state in the larger workspace (same as the Neo tab home) */
 .nc .nc-home { display: none; }
 .nc.nc-expanded .nc-empty, .nc.nc-full .nc-empty { max-width: 880px; }
 .nc.nc-expanded .nc-empty > :not(.nc-home), .nc.nc-full .nc-empty > :not(.nc-home) { display: none; }
 .nc.nc-expanded .nc-home, .nc.nc-full .nc-home { display: block; width: 100%; animation: nc-fade var(--nc-med) var(--nc-ease); }
 .nc .nc-home h2 { font-size: 26px; line-height: 34px; font-weight: 700; letter-spacing: -.015em; }
-.nc .nc-home .nc-h2b { font-size: 24px; line-height: 32px; } .nc .nc-home .nc-h2b b { color: var(--nc-accent); font-weight: 700; }
+.nc .nc-home .nc-h2b { font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -.015em; color: var(--nc-fg); } .nc .nc-home .nc-h2b b { color: var(--nc-accent); font-weight: 700; }
 .nc .nc-home .nc-sub { margin: 10px auto 0; font-size: 14px; line-height: 22px; max-width: 46ch; }
 .nc .nc-home .nc-cap { margin: 32px 0 14px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--nc-muted); }
 .nc .nc-sgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: left; }
 .nc .nc-scard { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--nc-line); background: var(--nc-sunk); border-radius: 14px; padding: 16px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast); }
 .nc .nc-scard:hover { border-color: var(--nc-accent); background: var(--nc-tile); }
 .nc .nc-scard b { font-size: 15px; line-height: 22px; font-weight: 600; } .nc .nc-scard span { font-size: 14px; line-height: 22px; color: var(--nc-muted); }
-/* docked sidebar matches the Neo tab sidebar */
+.nc .nc-homelink { margin-top: 18px; border: 0; background: none; color: var(--nc-accent); font-size: 13px; line-height: 18px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 4px 6px; }
+.nc .nc-homelink:hover { color: var(--nc-accent-hover); }
 @media (max-width: 1100px) { .nc .nc-sgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* larger reading size once the chat has room */
+.nc.nc-full .nc-ans, .nc.nc-expanded .nc-ans, .nc.nc-full .nc-user, .nc.nc-expanded .nc-user { font-size: 15px; line-height: 24px; }
+.nc.nc-full .nc-user, .nc.nc-expanded .nc-user { padding: 8px 14px; }
 
 /* Neo item in the main nav reads as active while Neo is expanded */
 .nc-neo-full #nav-neo { background: #e2e5fb; color: #3146b0; }
@@ -248,14 +247,12 @@ body.nc-host aside[aria-label="Neo"], body.nc-host button[title="Ask Neo (Ctrl J
 .nc.nc-docked .nc-hist { border-right: 0; background: transparent; overflow: hidden; }
 .nc.nc-docked .nc-hist .nc-wsnav { display: flex; flex: 1; min-height: 0; min-width: 247px; }
 .nc-wsnav .neonav { flex: 1; width: 100%; position: static; transform: none; box-shadow: none; }
-.nc.nc-docked .nc-screen:not([hidden]) { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.nc .nc-screen:not([hidden]) { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.nc .nc-wsnote { padding: 16px 14px; font-size: 13px; line-height: 18px; color: var(--nc-muted); }
 .nc .nc-shead { height: 44px; flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--nc-line); }
 .nc .nc-sbody { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #fff; }
 .nc .nc-sbody .main { flex: 1; min-height: 0; }
 .nc.nc-onscreen .nc-chat, .nc.nc-onscreen .nc-work { display: none; }
-
-/* v4: header badges hidden */
-.nc .nc-ttl span, .nc .nc-beta { display: none; }
 
 .nc .nc-plan .nc-m { color: var(--nc-fg); }
 .nc .nc-plan .nc-n { color: var(--nc-muted); font-size: 12px; font-weight: 600; }

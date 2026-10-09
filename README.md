@@ -42,15 +42,21 @@ recent chat or New chat returns to it with the transcript, draft and running ans
 any screen. Expanding grows the panel and the sidebar in one 240ms move beside the collapsed product nav. The Neo tab's home is the chat
 workspace (greeting, suggested actions, composer). `neo.css` is now the scoped file and the source of truth.
 
-## v4: chat-first automations (9 Oct 2026)
+## v4: chat-first automations and the audited build (9 Oct 2026)
 
-Simplified UI (slim sidebar: New chat, Agents, Activity, Knowledge, Recent, Settings; no header badges; chip suggestions; agents as a list;
-agent detail without the trust/data-source cards). Creating an agent or automation happens in chat: say "Every Monday check GST mismatches"
-or tap "Automate a task". Neo reads what it can from the sentence, asks only for what is missing (what it should do, when it runs, how much it
-does on its own) as tappable choices, shows a draft card, and only creates the agent when you tap Create agent ("Change something" re-asks one
-item). The new agent appears under Agents (kept in sessionStorage, reset with the tab) and "View agent" opens it in place. Posting, deleting
-and GST number changes always need approval. Implemented in `neo-chat.js` (`flowStart` / `advance` / `createFlowAgent`) and
-`NeoWorkspace.addAgent` in `neo/neo.js`.
+**Files that matter now**
+- `neo-chat.js` / `neo-chat.css`: the chat. Floating panel on product pages, expands in place into the full Neo view, and the full view on `neo/`. Every conversation is a transcript in sessionStorage (`neoChat`), so reopening a chat shows what was actually said; a half-finished automation setup resumes with its choices.
+- `neo/neo.js` / `neo/neo.css`: the workspace (sidebar, Agents, agent detail, Activity, Needs attention, Knowledge, Settings). Runs standalone on `neo/` and embedded in the expanded chat via `window.NeoWorkspace`. `neo.css` is scoped under `.neo-scope` so it cannot touch the product pages.
+- `neo-simple.js`: adds the Neo item to the product navigation and renames the pill to "Ask Neo". `neo-light.css`: pill and nav alignment only.
+
+**What works (simulated, no backend)**
+- Chat: scripted answers for the six suggested actions (invoices, duplicates, banking, GST, AP, month-end) plus attention; bill review panel with approve / skip / delete / keep and undo; stop mid-answer; an attached image triggers the unreadable-scan error with "Skip this file and continue".
+- Automation in chat: "Every Monday check GST mismatches" or "New agent" / "automate a task" starts the flow; Neo asks only for what is missing (what, when, how much on its own) with tappable choices, shows a draft card, creates the agent on confirm. The agent appears under Agents and the chat is renamed after it.
+- Agents: list, detail (latest run as a message on the left; prompt, frequency, time, end repeat, last run and permissions on the right; Save enables only after a change; pause/resume), Run now with a confirmation dialog, live progress in place, per-agent completion narrative, toast. Seeded "in progress" runs finish shortly after the page opens.
+- Activity: Running / Needs attention / Completed, run detail with results and audit timeline. Needs attention: apply / skip / apply-all / resolve decisions persist for the session. Settings: "why" preference persists.
+- Entry and exit: floating tab, Ask Neo pill, Ctrl J, Neo nav item; Expand / Minimize / Esc / product nav click; inside the expanded Neo the pill and Ctrl J focus the composer.
+
+**Known limits**: all data is in-memory prototype data, persisted only per browser tab (sessionStorage). Language understanding is keyword matching (five task kinds, four schedules). Below 861px the expanded view shows chat only (no Neo sidebar). Permissions are read-only. "Open document" goes to the Inbox page, not a specific document.
 
 ## Files added or changed in v2
 

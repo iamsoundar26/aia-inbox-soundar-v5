@@ -1,7 +1,7 @@
-/* Neo chat — compact Ask Neo interaction (ported from the Ask Neo prototype artifact, 8 Oct 2026).
-   window.NeoChat.mount(container, { mode: "panel" | "full" }) builds the UI. On app pages (no workspace) it
-   self-mounts as a side panel behind the Ask Neo pill, the floating tab and Ctrl J. Chats, decisions and the
-   open conversation are kept in sessionStorage so the side panel and the full view continue the same thread. */
+/* Neo chat (v4). One module, two presentations: the floating side panel on product pages (which can expand in
+   place into the full Neo workspace) and the full view on the Neo page. Every conversation is stored as a
+   transcript in sessionStorage ("neoChat"), so reopening a chat shows exactly what was said, and a half-finished
+   automation setup can be resumed. Neo's answers are scripted prototype data keyed by topic (SC below). */
 (function () {
   "use strict";
   var SCRIPT = document.currentScript, BASE = (SCRIPT && SCRIPT.src ? SCRIPT.src.replace(/\/neo-chat\.js.*$/, "") : "");
@@ -12,11 +12,11 @@
   var TICK = '<svg class="nc-tick" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>';
   var CROSS = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
   var WARN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 6v8M12 18h.01"/></svg>';
-  var X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  var X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   var EXPAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
   var COLLAPSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 10h6V4M10 14H4v6M20 4l-6 6M4 20l6-6"/></svg>';
-  var HISTI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>';
-  var PEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  var HISTI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>';
+  var PEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   var PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
   var SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
   var IC = {
@@ -25,7 +25,7 @@
     dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
   };
 
-  /* ---------- sample data ---------- */
+  /* ---------- prototype data: bills Neo can open in the review panel ---------- */
   var BILLS = {
     sharma: { v: "Sharma Traders", no: "SH/2291", date: "3 Oct 2026", due: "2 Nov 2026", sub: "₹40,847", gst: "₹7,353", tot: "₹48,200", gstin: "33ABCPS1234F1Z5", cat: "Packaging materials", file: "Bill_SH-2291.pdf", kind: "ready", tag: ["Ready", "ok"] },
     patel: { v: "Patel Logistics", no: "PL-0877", date: "3 Oct 2026", due: "18 Oct 2026", sub: "₹95,339", gst: "₹17,161", tot: "₹1,12,500", gstin: "27AAHFP5678K1Z2", cat: "Freight and cartage", file: "Bill_PL-0877.pdf", kind: "ready", tag: ["Ready", "ok"] },
@@ -34,8 +34,9 @@
     meera: { v: "Meera Stationers", no: "MS/19", date: "1 Oct 2026", due: "16 Oct 2026", sub: "₹5,797", gst: "₹1,043", tot: "₹6,840", gstin: "", cat: "Office supplies", file: "Bill_MS-19.jpg", kind: "gst", tag: ["GST number missing", "warn"] },
     sharmaDup: { v: "Sharma Traders", no: "SH/2291", date: "3 Oct 2026", due: "2 Nov 2026", sub: "₹40,847", gst: "₹7,353", tot: "₹48,200", gstin: "33ABCPS1234F1Z5", cat: "Packaging materials", file: "Bill_SH-2291_copy.pdf", kind: "dup", tag: ["Possible duplicate", "bad"] }
   };
+  /* Scripted answers. `match` picks the script from the user's words; `q` is the canonical prompt for seeded chats. */
   var SC = {
-    inbox: { match: /inbox|bill|read|review|invoice/i, q: "Work the Inbox with me",
+    inbox: { match: /inbox|bill|read|review|invoice|attached/i, q: "Work the Inbox with me",
       steps: ["Reading 6 new documents in Inbox", "Extracting vendor, date and amounts", "Checking GST numbers and matching vendors", "Looking for duplicates"],
       text: "I read **6 new bills**. **4 are ready** to approve, **1 needs a check** because the vendor GST number is missing, and **1 looks like a duplicate**. Select a bill to review the extracted details.",
       card: { title: "New bills", aside: "6 in Inbox", rows: [["Sharma Traders", "Bill SH/2291 · 3 Oct", "₹48,200", "sharma"], ["Patel Logistics", "Bill PL-0877 · 3 Oct", "₹1,12,500", "patel"], ["Lotus Packaging", "Bill LP/554 · 2 Oct", "₹42,400", "lotus"], ["Anand Textiles", "Bill AT-3310 · 1 Oct", "₹86,500", "anand"], ["Meera Stationers", "Bill MS/19 · 1 Oct", "₹6,840", "meera"], ["Sharma Traders", "Bill SH/2291 · 3 Oct", "₹48,200", "sharmaDup"]] },
@@ -50,53 +51,99 @@
       text: "I found **2 certain duplicates**. Each pair has the same vendor, bill number and amount. Choose what to do with each.",
       card: { title: "Certain duplicates", aside: "2 pairs", rows: [["Sharma Traders · SH/2291", "Uploaded twice, 3 Oct 10:14 and 10:16", "₹48,200", ["Certain match", "bad"], true], ["Patel Logistics · PL-0871", "Emailed and uploaded, 29 Sep", "₹23,900", ["Certain match", "bad"], true]] },
       follow: ["What needs my attention?", "Work the Inbox with me"] },
-    gst: { match: /gst/i, q: "Check GST issues",
+    gst: { match: /gst|gstr|\bitc\b/i, q: "Check GST",
       steps: ["Comparing the purchase register with GSTR-2B", "Validating vendor GST numbers", "Checking input credit eligibility"],
       text: "**186 transactions** checked for September. **179 match** GSTR-2B, **6 have amount mismatches** and **1 vendor GST number** differs from your vendor record.",
       card: { title: "GST check · September", aside: "7 issues", rows: [["Amount mismatch", "6 purchase bills differ from GSTR-2B by ₹12 to ₹480", "6", ["Check", "warn"]], ["GSTIN differs from vendor record", "Zoho Corporation", "1", ["Blocked", "warn"]]] },
       follow: ["What needs my attention?", "Work the Inbox with me"] },
-    automation: { match: /^\u0000$/, q: "", steps: ["Understood the request", "Asked the setup questions", "Created the agent"],
-      text: "We set this up together in chat. **The agent is under Agents** and asks for your approval before anything changes in your books.", follow: ["Automate a task"] },
+    bank: { match: /reconcil|bank|statement|unmatched/i, q: "Reconcile banking",
+      steps: ["Importing the latest bank statement", "Matching transactions to vouchers", "Explaining the ones that did not match"],
+      text: "**142 bank transactions** reviewed. **130 matched** your books automatically and **12 need a decision**, mostly bank charges and partial payments.",
+      card: { title: "Bank reconciliation · HDFC current account", aside: "12 open", rows: [["Bank charges", "5 lines · no voucher · ₹240 to ₹1,180", "5", ["Suggest entry", "info"]], ["Partial payments", "4 receipts smaller than the invoice", "4", ["Match and split", "warn"]], ["Unknown payee", "3 debits with no matching bill", "3", ["Check", "bad"]]] },
+      follow: ["What needs my attention?", "Check GST"] },
+    month: { match: /month.?end|clos(e|ing)/i, q: "Month-end closing",
+      steps: ["Checking unposted documents", "Checking unreconciled bank lines", "Checking pending GST returns"],
+      text: "**9 of 12 close checks** pass for September. **3 are still open**: 12 unreconciled bank lines, 5 unposted invoices and an ITC reversal for 2 vendors.",
+      card: { title: "September close", aside: "3 open", rows: [["Unreconciled bank lines", "12 lines · Reconciliation Agent can clear 9", "12", ["Open", "warn"]], ["Unposted invoices", "5 invoices waiting for your approval", "5", ["Open", "warn"]], ["ITC reversal", "Zoho Corporation and Nova Logistics", "2", ["Needs approval", "info"]]] },
+      follow: ["Reconcile banking", "What needs my attention?"] },
+    ap: { match: /\bap\b|payable|payment|due/i, q: "Review AP",
+      steps: ["Listing bills due in the next 7 days", "Checking approvals", "Grouping by vendor"],
+      text: "**31 bills** worth **₹14,82,300** are due this week. **29 are approved** and grouped into a payment batch. **2 are waiting** for approval from Priya R.",
+      card: { title: "Accounts payable · this week", aside: "31 bills", rows: [["Approved and batched", "29 bills · 11 vendors", "₹13,96,800", ["Ready", "ok"]], ["Waiting for approval", "Pulse Media · Orion Tech", "₹85,500", ["Waiting", "info"]]] },
+      follow: ["Month-end closing", "What needs my attention?"] },
     generic: { match: /.*/, q: "",
-      steps: ["Looking through your books", "Preparing a draft for you"],
-      text: "I can help with that. This is a first look; **nothing has been posted or changed** in your books.",
-      follow: ["Work the Inbox with me", "What needs my attention?"] }
+      steps: ["Looking through your books"],
+      text: "I'm not sure what to do with that yet. Here is what I can take on right now, or describe a task you'd like me to automate.",
+      follow: ["Work the Inbox with me", "What needs my attention?", "Automate a task"] }
   };
-  var SC_EXACT = {}; Object.keys(SC).forEach(function (k) { if (SC[k].q) SC_EXACT[SC[k].q] = 1; });
+  var PICK_ORDER = ["dups", "attention", "gst", "bank", "month", "ap", "inbox"];
+  var KIND2SC = { inv: "inbox", ap: "ap", bank: "bank", gst: "gst", month: "month", dups: "dups" };
+  var HOME = [["Review invoices", "Find invoices that need your attention", "inbox"], ["Find duplicates", "Identify possible duplicate bills", "dups"], ["Reconcile banking", "Find unmatched transactions", "bank"], ["Check GST", "Find GST mismatches and missing information", "gst"], ["Review AP", "See pending accounts payable work", "ap"], ["Month-end closing", "Check what is still incomplete", "month"]];
+  var EXACT = {}; Object.keys(SC).forEach(function (k) { if (SC[k].q) EXACT[SC[k].q] = k; }); HOME.forEach(function (h) { EXACT[h[0]] = h[2]; });
   var SEED = [
-    { id: 1, title: "Work the Inbox with me", group: "Today", when: "9:12 am", sc: "inbox" },
-    { id: 2, title: "Missing GST on Meera Stationers", group: "Today", when: "8:40 am", sc: "attention" },
-    { id: 3, title: "Duplicate bills in September", group: "Yesterday", when: "4:05 pm", sc: "dups" },
-    { id: 4, title: "What needs my attention?", group: "Yesterday", when: "11:30 am", sc: "attention" },
-    { id: 5, title: "Patel Logistics vendor mapping", group: "Previous 7 days", when: "1 Oct", sc: "inbox" },
-    { id: 6, title: "Find duplicates", group: "Previous 7 days", when: "30 Sep", sc: "dups" }
+    { id: 1, title: "Work the Inbox with me", group: "Today", when: "9:12 am", key: "inbox" },
+    { id: 2, title: "Missing GST on Meera Stationers", group: "Today", when: "8:40 am", key: "attention" },
+    { id: 3, title: "Duplicate bills in September", group: "Yesterday", when: "4:05 pm", key: "dups" },
+    { id: 4, title: "What needs my attention?", group: "Yesterday", when: "11:30 am", key: "attention" },
+    { id: 5, title: "Patel Logistics vendor mapping", group: "Previous 7 days", when: "1 Oct", key: "inbox" },
+    { id: 6, title: "Find duplicates", group: "Previous 7 days", when: "30 Sep", key: "dups" }
   ];
+
+  /* ---------- automation flow data ---------- */
+  var AUTO_RE = /\bautomat|\bschedule\b|every (day|morning|evening|week|month|mon|tue|wed|thu|fri|sat|sun)|\bdaily\b|\bweekly\b|\bmonthly\b|\bwhenever\b|\bworkflow\b|\b(create|make|build|set ?up|new)\b.{0,14}\b(agent|workflow|automation)|\bremind me\b/i;
+  var WHAT_OPTS = [["inv", "Review new invoices"], ["gst", "Check GST mismatches"], ["dups", "Find duplicate bills"], ["bank", "Reconcile banking"], ["month", "Prepare the month-end close"]];
+  var WHEN_OPTS = [["arrives", "When a new bill arrives"], ["morning", "Every morning at 9:00"], ["monday", "Every Monday at 9:00"], ["monthend", "On the last working day of the month"]];
+  var MODE_OPTS = [["approve", "Prepare it, then ask me before anything is posted"], ["suggest", "Only suggest, never act"], ["auto", "Handle clear cases, ask me on the rest"]];
+  var WHAT_INFO = {
+    inv: { short: "review new invoices", name: "Invoice Review", icon: "receipt", does: "read new invoices, check GST and duplicates, and suggest account coding", caps: ["Extract invoice information", "Validate GST", "Check duplicates", "Suggest account coding"], sources: ["Purchases", "Vendors", "GST"] },
+    gst: { short: "check GST mismatches", name: "GST Check", icon: "gst", does: "compare purchase bills with GSTR-2B and flag mismatches and missing GST numbers", caps: ["Validate GSTIN", "Compare with GSTR-2B", "Flag ineligible ITC"], sources: ["Purchases", "GST", "Vendors"] },
+    dups: { short: "find duplicate bills", name: "Duplicate Finder", icon: "copy", does: "compare vendor, bill number and amount to catch duplicate bills", caps: ["Compare vendor and bill number", "Match amounts and dates", "Flag certain duplicates"], sources: ["Purchases", "Vendors"] },
+    bank: { short: "reconcile your bank", name: "Bank Reconciliation", icon: "bank", does: "match bank transactions to your books and list what is left unmatched", caps: ["Match transactions", "Identify exceptions", "Suggest corrections"], sources: ["Banking", "Accounting"] },
+    month: { short: "prepare the month-end close", name: "Month-End Close", icon: "cal", does: "check unposted documents, unreconciled items and pending GST, then prepare a close summary", caps: ["Check unposted documents", "Check unreconciled items", "Prepare close summary"], sources: ["Purchases", "Banking", "GST", "Accounting"] }
+  };
+  var WHEN_LBL = { arrives: "when a new bill arrives", morning: "every morning at 9:00", monday: "every Monday at 9:00", monthend: "on the last working day of the month" };
+  var MODE_LBL = { approve: "It prepares the work and asks you before anything is posted", suggest: "It only suggests and never changes your books", auto: "It handles clear cases and asks you on the rest" };
 
   /* ---------- shared state (sessionStorage) ---------- */
   var ST;
-  function load() { try { ST = JSON.parse(sessionStorage.getItem("neoChat") || "null"); } catch (e) { ST = null; } if (!ST || !ST.hs) ST = { hs: SEED.slice(), uid: 100, billState: {}, active: null, open: false }; }
+  function load() {
+    try { ST = JSON.parse(sessionStorage.getItem("neoChat") || "null"); } catch (e) { ST = null; }
+    if (!ST || !ST.hs) ST = { v: 2, hs: SEED.map(function (s) { return { id: s.id, title: s.title, group: s.group, when: s.when, msgs: [{ u: SC[s.key].q }, { a: { k: "answer", key: s.key } }] }; }), uid: 100, billState: {}, active: null, open: false };
+    ST.hs.forEach(function (h) { /* migrate chats saved before transcripts existed */
+      if (h.msgs) return;
+      var key = h.sc && SC[h.sc] ? h.sc : "generic";
+      h.msgs = h.sc === "automation" ? [{ u: h.title }, { a: { k: "say", text: "We set this up together in chat. The agent is under Agents." } }] : [{ u: SC[key].q || h.title }, { a: { k: "answer", key: key } }];
+      delete h.sc;
+    });
+    ST.v = 2;
+  }
   function save() { try { sessionStorage.setItem("neoChat", JSON.stringify(ST)); } catch (e) {} }
   load();
 
-  function pick(t) { var k = ["dups", "attention", "gst", "inbox"]; for (var i = 0; i < k.length; i++) if (SC[k[i]].match.test(t)) return k[i]; return "generic"; }
+  function pick(t) { for (var i = 0; i < PICK_ORDER.length; i++) if (SC[PICK_ORDER[i]].match.test(t)) return PICK_ORDER[i]; return "generic"; }
   function el(h) { var t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function plain(s) { return s.replace(/\*\*/g, ""); }
   function rich(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
   function nowLabel() { var d = new Date(), h = d.getHours(), m = d.getMinutes(); return ((h % 12) || 12) + ":" + (m < 10 ? "0" : "") + m + (h < 12 ? " am" : " pm"); }
+  function titleOf(text) { return text.length > 34 ? text.slice(0, 32) + "…" : text; }
 
-  /* Neo workspace (nav + screens) is the Neo page's own code, loaded lazily so the expanded view and the Neo tab are literally the same UI. */
-  var NEO_V = "22";
+  /* The Neo workspace (sidebar + screens) is the Neo page's own code, loaded on demand on product pages. */
+  var NEO_V = "26";
   function loadWS(cb) {
-    if (window.NeoWorkspace) return cb();
+    if (window.NeoWorkspace) return cb(null);
+    if (loadWS.failed) return cb(loadWS.failed);
     if (loadWS.q) { loadWS.q.push(cb); return; }
     loadWS.q = [cb];
     var l = document.createElement("link"); l.rel = "stylesheet"; l.href = BASE + "/neo/neo.css?v=" + NEO_V; document.head.appendChild(l);
     var sc = document.createElement("script"); sc.src = BASE + "/neo/neo.js?v=" + NEO_V;
-    sc.onload = function () { var q = loadWS.q; loadWS.q = null; q.forEach(function (f) { f(); }); }; document.body.appendChild(sc);
+    function flush(err) { var q = loadWS.q || []; loadWS.q = null; q.forEach(function (f) { f(err); }); }
+    sc.onload = function () { flush(window.NeoWorkspace ? null : new Error("Neo workspace did not initialise")); };
+    sc.onerror = function () { loadWS.failed = new Error("Neo workspace script failed to load"); flush(loadWS.failed); };
+    document.body.appendChild(sc);
   }
 
-  /* Main product navigation (the host app's own sidebar): collapse it while Neo is expanded, restore it after. */
+  /* Main product navigation (host app sidebar): collapsed to its rail while Neo is expanded, restored after. */
   var PNAV = "prototype-main-navigation";
   function navBtn() { return document.querySelector('button[aria-controls="' + PNAV + '"]'); }
   function navAside() { var n = document.getElementById(PNAV); return n && n.closest("aside"); }
@@ -111,29 +158,36 @@
     root.innerHTML =
       '<aside class="nc-hist" aria-label="Chat history" hidden><div class="nc-hhead"><h2>History</h2><button class="nc-ibtn" type="button" data-hclose aria-label="Close history">' + X + '</button></div>' +
       '<div class="nc-hbar"><button class="nc-newbtn" type="button" data-new>' + PLUS + 'New chat</button><div class="nc-hsearch">' + SEARCH + '<label class="nc-sr" for="nc-hs-' + mode + '">Search chats</label><input id="nc-hs-' + mode + '" type="search" placeholder="Search chats" autocomplete="off"></div></div><div class="nc-hscroll" data-hlist></div><div class="neo-scope nc-wsnav" data-wsnav></div></aside>' +
-      '<div class="nc-chat"><header class="nc-head"><span class="nc-mark" aria-hidden="true">' + STAR + '</span><div class="nc-ttl"><b data-ttl>Neo</b></div>' +
-      '<button class="nc-ibtn" type="button" data-histbtn aria-label="Chat history" aria-expanded="false">' + HISTI + '</button><button class="nc-ibtn" type="button" data-new aria-label="New chat">' + PEN + '</button>' +
-      '<button class="nc-ibtn" type="button" data-expand aria-label="' + (mode === "full" ? "Minimize to floating chat" : "Expand Neo") + '">' + (mode === "full" ? COLLAPSE : EXPAND) + '</button><button class="nc-ibtn" type="button" data-close aria-label="Close Neo">' + X + "</button></header>" +
+      '<div class="nc-chat"><header class="nc-head"><span class="nc-mark" aria-hidden="true">' + STAR + '</span><h1 class="nc-ttl" data-ttl>Neo</h1>' +
+      '<button class="nc-ibtn" type="button" data-histbtn aria-label="Chat history" aria-expanded="false">' + HISTI + '</button><button class="nc-ibtn" type="button" data-new aria-label="New chat" title="New chat">' + PEN + '</button>' +
+      '<button class="nc-ibtn" type="button" data-expand aria-label="' + (mode === "full" ? "Minimize to floating chat" : "Expand Neo") + '" title="' + (mode === "full" ? "Minimize" : "Expand") + '">' + (mode === "full" ? COLLAPSE : EXPAND) + '</button><button class="nc-ibtn" type="button" data-close aria-label="Close Neo" title="Close">' + X + "</button></header>" +
       '<div class="nc-thread" data-thread role="region" aria-label="Conversation with Neo" tabindex="0"></div>' +
-      '<form class="nc-composer" data-form><div class="nc-box"><div class="nc-fchips" data-fchips></div><input type="file" class="nc-sr" data-file tabindex="-1" aria-hidden="true" accept=".pdf,.jpg,.jpeg,.png"><button class="nc-ibtn nc-sm32" type="button" data-attach aria-label="Attach a bill or document">' + PLUS + '</button><label class="nc-sr" for="nc-in-' + mode + '">Message Neo</label><textarea id="nc-in-' + mode + '" rows="1" placeholder="Ask Neo anything"></textarea><button class="nc-send" type="submit" data-send aria-label="Send" disabled>' + ARROW + '</button></div><p class="nc-hint">Neo can make mistakes. Review extracted details before approving.</p></form></div>' +
-      '<div class="nc-screen" hidden><div class="nc-shead"><button class="nc-ibtn" type="button" data-sexpand aria-label="Minimize to floating chat">' + COLLAPSE + '</button><button class="nc-ibtn" type="button" data-sclose aria-label="Close Neo">' + X + '</button></div><div class="nc-sbody neo-scope" data-sbody></div></div>' +
+      '<form class="nc-composer" data-form><div class="nc-box"><div class="nc-fchips" data-fchips></div><input type="file" class="nc-sr" data-file tabindex="-1" aria-hidden="true" accept=".pdf,.jpg,.jpeg,.png" multiple><button class="nc-ibtn nc-sm32" type="button" data-attach aria-label="Attach a bill or document" title="Attach">' + PLUS + '</button><label class="nc-sr" for="nc-in-' + mode + '">Message Neo</label><textarea id="nc-in-' + mode + '" rows="1" placeholder="Ask Neo anything"></textarea><button class="nc-send" type="submit" data-send aria-label="Send" disabled>' + ARROW + '</button></div><p class="nc-hint">Neo can make mistakes. Review extracted details before approving.</p></form></div>' +
+      '<div class="nc-screen" hidden><div class="nc-shead"><button class="nc-ibtn" type="button" data-sexpand aria-label="Minimize to floating chat" title="Minimize">' + COLLAPSE + '</button><button class="nc-ibtn" type="button" data-sclose aria-label="Close Neo" title="Close">' + X + '</button></div><div class="nc-sbody neo-scope" data-sbody></div></div>' +
       '<aside class="nc-work" aria-label="Review bill" hidden><div class="nc-hhead"><h2 data-wt tabindex="-1">Review bill</h2><button class="nc-ibtn" type="button" data-wclose aria-label="Close review panel">' + X + '</button></div><div class="nc-wbody" data-wbody></div><div class="nc-wfoot" data-wfoot></div></aside>' +
       '<div class="nc-sr" role="status" aria-live="polite" data-status></div>';
     var $ = function (s) { return root.querySelector(s); };
-    var thread = $("[data-thread]"), input = $("textarea"), send = $("[data-send]"), form = $("[data-form]"), hist = $(".nc-hist"), histList = $("[data-hlist]"), statusEl = $("[data-status]"), histBtn = $("[data-histbtn]"), search = $(".nc-hsearch input"), fileIn = $("[data-file]"), fchips = $("[data-fchips]"), work = $(".nc-work"), wbody = $("[data-wbody]"), wfoot = $("[data-wfoot]"), ttl = $("[data-ttl]");
+    var thread = $("[data-thread]"), input = $("textarea"), send = $("[data-send]"), form = $("[data-form]"), hist = $(".nc-hist"), histList = $("[data-hlist]"), statusEl = $("[data-status]"), histBtn = $("[data-histbtn]"), search = $(".nc-hsearch input"), fileIn = $("[data-file]"), fchips = $("[data-fchips]"), work = $(".nc-work"), wbody = $("[data-wbody]"), wfoot = $("[data-wfoot]"), ttl = $("[data-ttl]"), expBtn = $("[data-expand]"), screenEl = $(".nc-screen");
     var histOpen = false, workOpen = false, workKey = null, workTrigger = null, running = false, runId = 0, cur = null, t0 = 0, files = [];
+    var side = opts.sidebar !== false, expanded = false, expT = 0, flow = null, navRO = null, wsAttached = false;
 
     function sleep(ms, id) { return new Promise(function (res, rej) { setTimeout(function () { id === runId ? res() : rej("cancel"); }, ms); }); }
     function down() { requestAnimationFrame(function () { thread.scrollTop = thread.scrollHeight; }); }
     function say(m) { statusEl.textContent = ""; setTimeout(function () { statusEl.textContent = m; }, 60); }
     function setRunning(r) { running = r; send.innerHTML = r ? STOP : ARROW; send.setAttribute("aria-label", r ? "Stop Neo" : "Send"); send.type = r ? "button" : "submit"; send.disabled = !r && !input.value.trim() && !files.length; }
-    var side = opts.sidebar !== false;
-    var expanded = false, expT = 0;
     function docked() { return mode === "full" && mq.matches; }
     function syncLayout() { root.classList.toggle("nc-docked", docked()); hist.hidden = docked() ? !side : !histOpen; histBtn.hidden = docked(); histBtn.setAttribute("aria-expanded", String(!hist.hidden)); work.hidden = !workOpen; }
     function openHist(o) { histOpen = o; if (o) workOpen = false; syncLayout(); if (o) search.focus(); else histBtn.focus(); }
     function activeItem() { return ST.hs.filter(function (h) { return h.id === ST.active; })[0]; }
     function setTitle() { var a = activeItem(); ttl.textContent = a ? a.title : "Neo"; }
+    function record(msg) { var a = activeItem(); if (!a) return; a.msgs = a.msgs || []; a.msgs.push(msg); save(); }
+    function persistFlow() { var a = activeItem(); if (!a) return; a.flow = flow ? { slots: Object.assign({}, flow.slots), stage: flow.stage } : null; save(); }
+    function ensureItem(text) {
+      var first = thread.querySelector(".nc-empty"); if (first) first.remove();
+      if (ST.active == null) { var h = { id: ++ST.uid, title: titleOf(text), group: "Today", when: nowLabel(), msgs: [] }; ST.hs.unshift(h); ST.active = h.id; save(); renderHist(); setTitle(); }
+    }
+
+    /* history */
     function renderHist() {
       var q = search.value.trim().toLowerCase(), groups = ["Today", "Yesterday", "Previous 7 days"], out = "", any = false;
       groups.forEach(function (g) {
@@ -149,7 +203,7 @@
       openSaved(+b.dataset.id); if (!docked()) { histOpen = false; syncLayout(); } thread.focus();
     });
     search.addEventListener("input", renderHist);
-    function openSaved(id) { flow = null; var item = ST.hs.filter(function (h) { return h.id === id; })[0]; if (!item) return; stop(); ST.active = item.id; save(); renderSaved(item); renderHist(); setTitle(); workOpen = false; syncLayout(); }
+    function openSaved(id) { var item = ST.hs.filter(function (h) { return h.id === id; })[0]; if (!item) return; stop(); ST.active = item.id; save(); renderSaved(item); renderHist(); setTitle(); workOpen = false; syncLayout(); }
 
     /* review panel */
     function tagFor(key, fallback) { var st = ST.billState[key]; if (st === "approved") return ["Approved", "ok"]; if (st === "skipped") return ["Skipped", "info"]; if (st === "deleted") return ["Deleted", "info"]; if (st === "kept") return ["Kept", "info"]; return BILLS[key] ? BILLS[key].tag : fallback; }
@@ -184,8 +238,14 @@
     }
     $("[data-wclose]").onclick = closeWork;
 
-    /* builders */
+    /* ---------- message builders (used live and on replay) ---------- */
     function userEl(t) { return el('<div class="nc-user"><span class="nc-sr">You said: </span>' + esc(t) + "</div>"); }
+    function aiEl() { var r = el('<div class="nc-ai">' + AV + '<div class="nc-body"><span class="nc-sr">Neo says: </span></div></div>'); return { root: r, body: r.querySelector(".nc-body") }; }
+    function trailEl(steps, secs) {
+      var det = el('<details class="nc-trail"><summary>Checked ' + steps.length + " source" + (steps.length > 1 ? "s" : "") + (secs ? " · " + secs + "s" : "") + '</summary><ul class="nc-steps"></ul></details>');
+      steps.forEach(function (s) { det.querySelector("ul").append(el('<li class="done"><span class="nc-ic">' + TICK + "</span><span>" + esc(s) + "</span></li>")); });
+      return det;
+    }
     function cardEl(c, animate) {
       var card = el('<div class="nc-card"><h3><span>' + esc(c.title) + "</span><span>" + esc(c.aside) + "</span></h3></div>");
       c.rows.forEach(function (d, i) {
@@ -206,16 +266,71 @@
       del.onclick = function () { settle("Duplicate deleted."); }; keep.onclick = function () { settle("Kept. Both bills stay in your books."); };
       reset(false); return box;
     }
+    function chipsEl(labels, onPick, label) {
+      var ch = el('<div class="nc-chips" role="group" aria-label="' + esc(label || "Suggested follow-ups") + '"></div>');
+      labels.forEach(function (t) { var b = el('<button class="nc-chip" type="button">' + esc(t) + "</button>"); b.onclick = function () { onPick(t, ch); }; ch.append(b); });
+      return ch;
+    }
+    function followChips(sc) { return chipsEl(sc.follow, function (t) { start(t); }); }
+    function choiceEl(optsList, pick) { return chipsEl(optsList.map(function (o) { return o[1]; }), function (label, ch) { var o = optsList.filter(function (x) { return x[1] === label; })[0]; ch.remove(); thread.append(userEl(label)); record({ u: label }); pick(o[0]); down(); }, "Choose one"); }
+    function planEl(name, rows) {
+      var card = el('<div class="nc-card nc-plan"><h3><span>' + esc(name) + "</span><span>Draft</span></h3></div>");
+      rows.forEach(function (d) { card.append(el('<div class="nc-row" style="animation:none"><div class="nc-n">' + esc(d[0]) + '</div><div class="nc-m">' + esc(d[1]) + "</div></div>")); });
+      return card;
+    }
+    function planBtns() {
+      var btns = el('<div class="nc-btns"></div>'), ok = el('<button class="nc-btn nc-pri" type="button">Create agent</button>'), ed = el('<button class="nc-btn" type="button">Change something</button>');
+      ok.onclick = function () { btns.remove(); thread.append(userEl("Create agent")); record({ u: "Create agent" }); createFlowAgent(); };
+      ed.onclick = function () { btns.remove(); thread.append(userEl("Change something")); record({ u: "Change something" }); flow.stage = "edit"; persistFlow(); neoSay("What would you like to change?", function (b2) { b2.append(editChips()); }, { k: "say", text: "What would you like to change?" }); };
+      btns.append(ok, ed); return btns;
+    }
+    function editChips() { return choiceEl([["what", "What it does"], ["when", "When it runs"], ["mode", "How much it does on its own"]], function (k) { flow.slots[k] = null; persistFlow(); advance(); }); }
+    function createdBtns(id) {
+      var btns = el('<div class="nc-btns"></div>'), v = el('<button class="nc-btn nc-pri" type="button">View agent</button>'), n = el('<button class="nc-btn" type="button">Automate something else</button>');
+      v.onclick = function () { openAgent(id); }; n.onclick = function () { start("I want to automate a task"); };
+      btns.append(v, n); return btns;
+    }
+    function errorEl(file, text, key) {
+      var err = el('<div class="nc-errcard" role="alert"><p><b>One file could not be read.</b> ' + esc(file) + ' is too blurry to extract amounts from. I stopped before changing anything.</p><div class="nc-btns"><button class="nc-btn nc-pri" type="button">Skip this file and continue</button><button class="nc-btn" type="button">Upload a clearer copy</button></div></div>');
+      var b = err.querySelectorAll("button");
+      b[0].onclick = function () { err.remove(); start(text, { resume: true, key: key }); };
+      b[1].onclick = function () { fileIn.click(); };
+      return err;
+    }
+    function stageChips() {
+      var s = flow.slots, st = flow.stage;
+      if (st === "what") return choiceEl(WHAT_OPTS, function (k) { s.what = k; persistFlow(); advance(); });
+      if (st === "when") return choiceEl(WHEN_OPTS, function (k) { s.when = k; persistFlow(); advance(); });
+      if (st === "mode") return choiceEl(MODE_OPTS, function (k) { s.mode = k; persistFlow(); advance(); });
+      if (st === "edit") return editChips();
+      if (st === "confirm") return planBtns();
+      return null;
+    }
+    function openAgent(id) {
+      if (opts.inPlace) { if (!expanded) inst.setExpanded(true); loadWS(function (err) { if (err) say("The Neo workspace could not load."); else NeoWorkspace.navigate("/agents/" + id); }); }
+      else if (window.NeoWorkspace) location.hash = "#/agents/" + id;
+      else location.href = BASE + "/neo/#/agents/" + id;
+    }
+
+    /* replay a saved transcript */
     function renderSaved(item) {
-      var sc = SC[item.sc]; thread.innerHTML = "";
-      thread.append(userEl(sc.q || item.title));
-      var r = el('<div class="nc-ai">' + AV + '<div class="nc-body"><span class="nc-sr">Neo says: </span></div></div>'), body = r.querySelector(".nc-body");
-      var det = el('<details class="nc-trail"><summary>Checked ' + sc.steps.length + ' sources</summary><ul class="nc-steps"></ul></details>');
-      sc.steps.forEach(function (s) { det.querySelector("ul").append(el('<li class="done"><span class="nc-ic">' + TICK + "</span><span>" + esc(s) + "</span></li>")); });
-      body.append(det, el('<p class="nc-ans">' + rich(sc.text) + "</p>"));
-      if (sc.card) body.append(cardEl(sc.card, false));
-      body.append(el('<p class="nc-note">Saved chat from ' + esc(item.when) + ". Ask a follow-up to continue.</p>"));
-      thread.append(r); thread.scrollTop = 0;
+      thread.innerHTML = ""; flow = item.flow ? { slots: Object.assign({}, item.flow.slots), stage: item.flow.stage } : null;
+      var msgs = item.msgs || [], lastBody = null, lastAnswer = null, lastCreated = null, lastUser = "";
+      msgs.forEach(function (m, i) {
+        if (m.u) { thread.append(userEl(m.u)); lastUser = m.u; return; }
+        var a = m.a, ai = aiEl(); lastBody = ai.body; lastAnswer = null; lastCreated = null;
+        if (a.k === "answer") { var sc = SC[a.key] || SC.generic; ai.body.append(trailEl(sc.steps, a.secs)); ai.body.append(el('<p class="nc-ans">' + rich(sc.text) + "</p>")); if (sc.card) ai.body.append(cardEl(sc.card, false)); lastAnswer = sc; }
+        else if (a.k === "say") ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>"));
+        else if (a.k === "plan") { ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>"), planEl(a.name, a.rows)); }
+        else if (a.k === "created") { ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>")); lastCreated = a.id; }
+        else if (a.k === "error") { ai.body.append(errorEl(a.file, lastUser, a.key)); }
+        else if (a.k === "stopped") { ai.root.classList.add("nc-stopped"); ai.body.append(el('<p class="nc-note">Stopped. Nothing was changed in your books.</p>')); }
+        thread.append(ai.root);
+      });
+      if (flow && lastBody) { var c = stageChips(); if (c) lastBody.append(c); }
+      else if (lastCreated != null && lastBody) lastBody.append(createdBtns(lastCreated));
+      else if (lastAnswer && lastBody) lastBody.append(followChips(lastAnswer));
+      if (!msgs.length) showEmpty(); else thread.scrollTop = thread.scrollHeight;
     }
     function showEmpty() {
       thread.innerHTML = "";
@@ -228,103 +343,104 @@
         b.onclick = function () { start(s2[1]); }; st.append(b);
       });
       var h = new Date().getHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-      var home = el('<div class="nc-home"><h2>' + hi + ', Soundar <span aria-hidden="true">👋</span></h2><h2 class="nc-h2b">What would you like <b>Neo</b> to help with?</h2><p class="nc-sub">Your AI accounting workspace for Shakunthalam Oil &amp; Refineries</p><p class="nc-cap">Suggested actions</p><div class="nc-sgrid"></div></div>');
-      [["Review invoices", "Find invoices that need your attention"], ["Find duplicates", "Identify possible duplicate bills"], ["Reconcile banking", "Find unmatched transactions"], ["Check GST", "Find GST mismatches and missing information"], ["Review AP", "See pending accounts payable work"], ["Month-end closing", "Check what is still incomplete"]].forEach(function (c) {
-        var b = el('<button class="nc-scard" type="button"><b>' + c[0] + "</b><span>" + c[1] + "</span></button>"); b.onclick = function () { start(c[0]); }; home.querySelector(".nc-sgrid").append(b);
-      });
+      var home = el('<div class="nc-home"><h2>' + hi + ', Soundar <span aria-hidden="true">👋</span></h2><p class="nc-h2b">What would you like <b>Neo</b> to help with?</p><p class="nc-sub">Your AI accounting workspace for Shakunthalam Oil &amp; Refineries</p><p class="nc-cap" id="nc-cap-' + mode + '">Suggested actions</p><div class="nc-sgrid" role="group" aria-labelledby="nc-cap-' + mode + '"></div><button class="nc-homelink" type="button">Or ask Neo to automate a task</button></div>');
+      HOME.forEach(function (c) { var b = el('<button class="nc-scard" type="button"><b>' + c[0] + "</b><span>" + c[1] + "</span></button>"); b.onclick = function () { start(c[0]); }; home.querySelector(".nc-sgrid").append(b); });
+      home.querySelector(".nc-homelink").onclick = function () { start("I want to automate a task"); };
       e.append(home); thread.append(e);
     }
     function newChat() { stop(); flow = null; ST.active = null; save(); showEmpty(); renderHist(); setTitle(); workOpen = false; if (!docked()) histOpen = false; syncLayout(); input.focus(); }
 
-    /* run */
+    /* ---------- live answers ---------- */
     function stop() {
       if (!running) return;
       runId++;
       if (cur) {
-        cur.root.classList.remove("nc-working"); cur.root.classList.add("nc-stopped");
+        cur.root.classList.remove("nc-working"); cur.root.classList.add("nc-stopped"); cur.root.removeAttribute("aria-busy");
         if (cur.sk) cur.sk.remove();
         cur.body.querySelectorAll(".nc-ring").forEach(function (r) { r.parentNode.innerHTML = CROSS; });
         cur.body.querySelectorAll(".nc-shim").forEach(function (s) { s.classList.remove("nc-shim"); });
         var th = cur.body.querySelector(".nc-think"); if (th) th.remove();
         cur.body.append(el('<p class="nc-note">Stopped. Nothing was changed in your books.</p>')); down();
+        if (cur.pending) record({ a: { k: "stopped" } });
+        cur = null;
       }
       setRunning(false); say("Neo stopped. Nothing was changed.");
+    }
+    async function stream(p, text, id, perWord) {
+      var parts = text.split("**");
+      for (var j = 0; j < parts.length; j++) {
+        var words = parts[j].split(/(\s+)/);
+        for (var k = 0; k < words.length; k++) {
+          if (!words[k]) continue;
+          var s = document.createElement(j % 2 ? "b" : "span"); s.className = "nc-w"; s.textContent = words[k]; p.append(s);
+          if (words[k].trim()) await sleep(perWord, id);
+        }
+        down();
+      }
     }
     async function start(text, o) {
       o = o || {};
       if (running) stop();
-      if (!o.resume && flow && !SC_EXACT[text]) return flowReply(text);
-      if (!o.resume && AUTO_RE.test(text) && !SC_EXACT[text]) return flowStart(text);
-      flow = null;
-      var key = pick(text), sc = SC[key], id = ++runId, failed = false;
-      var first = thread.querySelector(".nc-empty"); if (first) first.remove();
-      if (!o.resume && ST.active == null) { var h = { id: ++ST.uid, title: text.length > 34 ? text.slice(0, 32) + "…" : text, group: "Today", when: nowLabel(), sc: key }; ST.hs.unshift(h); ST.active = h.id; save(); renderHist(); setTitle(); }
-      else if (!o.resume) { var a = activeItem(); if (a) { a.sc = key; save(); } }
+      var exact = EXACT[text];
+      if (!o.resume && flow && !exact) return flowReply(text);
+      if (!o.resume && AUTO_RE.test(text) && !exact) return flowStart(text);
+      if (flow) { flow = null; persistFlow(); }
+      var key = o.key || (o.kind && SC[o.kind] ? o.kind : null) || exact || pick(text), sc = SC[key], id = ++runId, failed = false;
+      ensureItem(text);
+      if (!o.resume) { thread.append(userEl(text)); record({ u: text }); }
+      var badFile = !o.resume && o.files ? o.files.filter(function (f) { return /\.(jpe?g|png)$/i.test(f); })[0] : null;
       setRunning(true);
-      if (!o.resume) thread.append(userEl(text));
-      var r = el('<div class="nc-ai nc-working" aria-busy="true">' + AV + '<div class="nc-body"><span class="nc-sr">Neo says: </span></div></div>'), body = r.querySelector(".nc-body");
-      thread.append(r); cur = { root: r, body: body }; down();
+      var ai = aiEl(); ai.root.classList.add("nc-working"); ai.root.setAttribute("aria-busy", "true");
+      thread.append(ai.root); cur = { root: ai.root, body: ai.body, pending: true }; down();
       t0 = performance.now();
       try {
         say("Neo is thinking");
-        var think = el('<div class="nc-think"><span class="nc-shim">Thinking</span></div>'); body.append(think);
+        var think = el('<div class="nc-think"><span class="nc-shim">Thinking</span></div>'); ai.body.append(think);
         await sleep(700, id);
         think.remove();
-        var ul = el('<ul class="nc-steps"></ul>'); body.append(ul);
+        var ul = el('<ul class="nc-steps"></ul>'); ai.body.append(ul);
         for (var i = 0; i < sc.steps.length; i++) {
           var li = el('<li><span class="nc-ic"><span class="nc-ring"></span></span><span class="nc-shim">' + esc(sc.steps[i]) + "</span></li>"); ul.append(li); say(sc.steps[i]); down();
           await sleep(800 + i * 100, id);
-          if (o.fail && i === 1) { li.className = "fail"; li.innerHTML = '<span class="nc-ic">' + CROSS + "</span><span>Could not read INV_scan_0412.pdf</span>"; failed = true; break; }
+          if (badFile && i === Math.min(1, sc.steps.length - 1)) { li.className = "fail"; li.innerHTML = '<span class="nc-ic">' + CROSS + "</span><span>Could not read " + esc(badFile) + "</span>"; failed = true; break; }
           li.className = "done"; li.innerHTML = '<span class="nc-ic">' + TICK + "</span><span>" + esc(sc.steps[i]) + "</span>";
         }
         if (failed) {
-          r.classList.remove("nc-working"); r.removeAttribute("aria-busy");
-          var err = el('<div class="nc-errcard" role="alert"><p><b>One file could not be read.</b> The scan of INV_scan_0412.pdf is too blurry to extract amounts. I stopped before changing anything.</p><div class="nc-btns"><button class="nc-btn nc-pri" type="button">Skip this file and continue</button><button class="nc-btn" type="button">Upload a clearer copy</button></div></div>');
-          err.querySelector(".nc-pri").onclick = function () { err.remove(); start(text, { resume: true }); };
-          body.append(err); setRunning(false); down(); return;
+          ai.root.classList.remove("nc-working"); ai.root.removeAttribute("aria-busy");
+          ai.body.append(errorEl(badFile, text, key)); record({ a: { k: "error", file: badFile, key: key } }); cur.pending = false;
+          setRunning(false); say("One file could not be read."); down(); return;
         }
         var secs = ((performance.now() - t0) / 1000).toFixed(1);
-        var det = el('<details class="nc-trail"><summary>Checked ' + sc.steps.length + " sources · " + secs + "s</summary></details>");
+        var det = el('<details class="nc-trail"><summary>Checked ' + sc.steps.length + " source" + (sc.steps.length > 1 ? "s" : "") + " · " + secs + "s</summary></details>");
         ul.replaceWith(det); det.append(ul);
-        var sk = el('<div class="nc-skel" aria-hidden="true"><i></i><i></i></div>'); body.append(sk); cur.sk = sk; down();
+        var sk = el('<div class="nc-skel" aria-hidden="true"><i></i><i></i></div>'); ai.body.append(sk); cur.sk = sk; down();
         await sleep(380, id); sk.remove(); cur.sk = null;
-        var p = el('<p class="nc-ans" aria-hidden="true"></p>'); body.append(p);
-        var parts = sc.text.split("**");
-        for (var j = 0; j < parts.length; j++) {
-          var words = parts[j].split(/(\s+)/);
-          for (var k = 0; k < words.length; k++) {
-            if (!words[k]) continue;
-            var s = document.createElement(j % 2 ? "b" : "span"); s.className = "nc-w"; s.textContent = words[k]; p.append(s);
-            if (words[k].trim()) await sleep(22, id);
-          }
-          down();
-        }
+        var p = el('<p class="nc-ans" aria-hidden="true"></p>'); ai.body.append(p);
+        await stream(p, sc.text, id, 22);
         p.removeAttribute("aria-hidden"); say(plain(sc.text));
-        if (sc.card) { await sleep(200, id); body.append(cardEl(sc.card, true)); down(); await sleep(sc.card.rows.length * 40 + 300, id); }
-        var ch = el('<div class="nc-chips" role="group" aria-label="Suggested follow-ups"></div>');
-        sc.follow.forEach(function (t) { var b = el('<button class="nc-chip" type="button">' + esc(t) + "</button>"); b.onclick = function () { start(t); }; ch.append(b); });
-        body.append(ch); down();
-        r.classList.remove("nc-working"); r.removeAttribute("aria-busy"); setRunning(false);
+        if (sc.card) { await sleep(200, id); ai.body.append(cardEl(sc.card, true)); down(); await sleep(sc.card.rows.length * 40 + 300, id); }
+        ai.body.append(followChips(sc)); down();
+        ai.root.classList.remove("nc-working"); ai.root.removeAttribute("aria-busy");
+        record({ a: { k: "answer", key: key, secs: secs } }); cur.pending = false; setRunning(false);
+      } catch (e) { if (e !== "cancel") throw e; }
+    }
+    /* A short Neo message (used by the automation flow). `after` may append chips/cards; `store` is what the transcript keeps. */
+    async function neoSay(text, after, store) {
+      var id = ++runId; setRunning(true);
+      var ai = aiEl(); ai.root.classList.add("nc-working"); ai.root.setAttribute("aria-busy", "true");
+      thread.append(ai.root); cur = { root: ai.root, body: ai.body, pending: true }; down();
+      try {
+        var think = el('<div class="nc-think"><span class="nc-shim">Thinking</span></div>'); ai.body.append(think); await sleep(450, id); think.remove();
+        var p = el('<p class="nc-ans" aria-hidden="true"></p>'); ai.body.append(p);
+        await stream(p, text, id, 16);
+        p.removeAttribute("aria-hidden"); say(plain(text));
+        if (after) await after(ai.body, id);
+        ai.root.classList.remove("nc-working"); ai.root.removeAttribute("aria-busy");
+        if (store) record({ a: store }); cur.pending = false; setRunning(false); down();
       } catch (e) { if (e !== "cancel") throw e; }
     }
 
-
     /* ---------- conversational automation: chat first, clarify when needed, confirm before creating ---------- */
-    var AUTO_RE = /\bautomat|\bschedule\b|every (day|morning|evening|week|month|mon|tue|wed|thu|fri|sat|sun)|\bdaily\b|\bweekly\b|\bmonthly\b|\bwhenever\b|\bworkflow\b|\b(create|make|build|set ?up)\b.{0,14}\b(agent|workflow)|\bremind me\b/i;
-    var WHAT_OPTS = [["inv", "Review new invoices"], ["gst", "Check GST mismatches"], ["dups", "Find duplicate bills"], ["bank", "Reconcile banking"], ["month", "Prepare the month-end close"]];
-    var WHEN_OPTS = [["arrives", "When a new bill arrives"], ["morning", "Every morning at 9:00"], ["monday", "Every Monday at 9:00"], ["monthend", "On the last working day of the month"]];
-    var MODE_OPTS = [["approve", "Prepare it, then ask me before anything is posted"], ["suggest", "Only suggest, never act"], ["auto", "Handle clear cases, ask me on the rest"]];
-    var WHAT_INFO = {
-      inv: { short: "review new invoices", name: "Invoice Review", icon: "receipt", does: "read new invoices, check GST and duplicates, and suggest account coding", caps: ["Extract invoice information", "Validate GST", "Check duplicates", "Suggest account coding"], sources: ["Purchases", "Vendors", "GST"] },
-      gst: { short: "check GST mismatches", name: "GST Check", icon: "gst", does: "compare purchase bills with GSTR-2B and flag mismatches and missing GST numbers", caps: ["Validate GSTIN", "Compare with GSTR-2B", "Flag ineligible ITC"], sources: ["Purchases", "GST", "Vendors"] },
-      dups: { short: "find duplicate bills", name: "Duplicate Finder", icon: "copy", does: "compare vendor, bill number and amount to catch duplicate bills", caps: ["Compare vendor and bill number", "Match amounts and dates", "Flag certain duplicates"], sources: ["Purchases", "Vendors"] },
-      bank: { short: "reconcile your bank", name: "Bank Reconciliation", icon: "bank", does: "match bank transactions to your books and list what is left unmatched", caps: ["Match transactions", "Identify exceptions", "Suggest corrections"], sources: ["Banking", "Accounting"] },
-      month: { short: "prepare the month-end close", name: "Month-End Close", icon: "cal", does: "check unposted documents, unreconciled items and pending GST, then prepare a close summary", caps: ["Check unposted documents", "Check unreconciled items", "Prepare close summary"], sources: ["Purchases", "Banking", "GST", "Accounting"] }
-    };
-    var WHEN_LBL = { arrives: "when a new bill arrives", morning: "every morning at 9:00", monday: "every Monday at 9:00", monthend: "on the last working day of the month" };
-    var MODE_LBL = { approve: "It prepares the work and asks you before anything is posted", suggest: "It only suggests and never changes your books", auto: "It handles clear cases and asks you on the rest" };
-    var flow = null;
-    function optLabel(list, k) { return (list.filter(function (o) { return o[0] === k; })[0] || [])[1]; }
     function parseSlots(t) {
       var o = {};
       o.what = /gst|gstr|\bitc\b/i.test(t) ? "gst" : /duplicate/i.test(t) ? "dups" : /reconcil|bank|statement/i.test(t) ? "bank" : /month.?end|clos(e|ing)/i.test(t) ? "month" : /invoice|bill|receipt|expense/i.test(t) ? "inv" : null;
@@ -332,63 +448,22 @@
       o.mode = /only suggest|never act|don'?t (act|post)/i.test(t) ? "suggest" : /handle clear|automatically|on its own|handle (it|them)/i.test(t) ? "auto" : /ask me|approv|confirm/i.test(t) ? "approve" : null;
       return o;
     }
-    function ensureItem(text) {
-      var first = thread.querySelector(".nc-empty"); if (first) first.remove();
-      if (ST.active == null) { var h = { id: ++ST.uid, title: text.length > 34 ? text.slice(0, 32) + "…" : text, group: "Today", when: nowLabel(), sc: "automation" }; ST.hs.unshift(h); ST.active = h.id; save(); renderHist(); setTitle(); }
-      else { var a = activeItem(); if (a) { a.sc = "automation"; save(); } }
-    }
-    async function neoSay(text, after) {
-      var id = ++runId; setRunning(true);
-      var r = el('<div class="nc-ai nc-working" aria-busy="true">' + AV + '<div class="nc-body"><span class="nc-sr">Neo says: </span></div></div>'), body = r.querySelector(".nc-body");
-      thread.append(r); cur = { root: r, body: body }; down();
-      try {
-        var think = el('<div class="nc-think"><span class="nc-shim">Thinking</span></div>'); body.append(think); await sleep(450, id); think.remove();
-        var p = el('<p class="nc-ans" aria-hidden="true"></p>'); body.append(p);
-        var parts = text.split("**");
-        for (var j = 0; j < parts.length; j++) {
-          var words = parts[j].split(/(\s+)/);
-          for (var k = 0; k < words.length; k++) {
-            if (!words[k]) continue;
-            var w = document.createElement(j % 2 ? "b" : "span"); w.className = "nc-w"; w.textContent = words[k]; p.append(w);
-            if (words[k].trim()) await sleep(16, id);
-          }
-          down();
-        }
-        p.removeAttribute("aria-hidden"); say(plain(text));
-        if (after) await after(body, id);
-        r.classList.remove("nc-working"); r.removeAttribute("aria-busy"); setRunning(false); down();
-      } catch (e) { if (e !== "cancel") throw e; }
-    }
-    function choiceEl(opts, pick) {
-      var ch = el('<div class="nc-chips" role="group" aria-label="Choose one"></div>');
-      opts.forEach(function (o) {
-        var b = el('<button class="nc-chip" type="button">' + esc(o[1]) + "</button>");
-        b.onclick = function () { ch.remove(); thread.append(userEl(o[1])); pick(o[0], o[1]); down(); };
-        ch.append(b);
-      });
-      return ch;
-    }
     function nextStage() { var s = flow.slots; return !s.what ? "what" : !s.when ? "when" : !s.mode ? "mode" : "confirm"; }
     function flowSpec() {
-      var s = flow.slots, w = WHAT_INFO[s.what], approve = s.mode === "approve" || s.mode === "auto";
-      return { id: "auto-" + Date.now(), name: w.name + " Automation", short: "Neo will " + w.short + " " + WHEN_LBL[s.when] + ".", long: "Created in chat. Neo will " + w.does + ", " + WHEN_LBL[s.when] + ". " + MODE_LBL[s.mode] + ".", caps: w.caps, sources: w.sources, status: "ready", icon: w.icon, runs: [], schedule: s.when,
+      var s = flow.slots, w = WHAT_INFO[s.what];
+      return { id: "auto-" + Date.now(), kind: s.what, name: w.name + " Automation", short: "Neo will " + w.short + " " + WHEN_LBL[s.when] + ".", long: "Neo will " + w.does + ", " + WHEN_LBL[s.when] + ". " + MODE_LBL[s.mode] + ".", caps: w.caps, sources: w.sources, icon: w.icon, runs: [], schedule: s.when, time: "morning", mode: s.mode,
         perms: { read: w.sources, suggest: ["Account coding", "GST treatment"], execute: s.mode === "suggest" ? [] : [["Prepare voucher", s.mode === "auto"]], approve: ["Post accounting entry", "Delete document", "Change a GST number"] } };
     }
     async function advance(first) {
-      var st = flow.stage = nextStage(), s = flow.slots, w = WHAT_INFO[s.what];
+      var st = flow.stage = nextStage(), s = flow.slots, w = WHAT_INFO[s.what]; persistFlow();
       var known = s.what ? "Neo will **" + w.short + "**" + (s.when ? " " + WHEN_LBL[s.when] : "") + ". " : "";
-      if (st === "what") return neoSay((first ? "I can set that up with you. " : "") + "What should it take care of?", function (body) { body.append(choiceEl(WHAT_OPTS, function (k) { s.what = k; advance(); })); });
-      if (st === "when") return neoSay((first ? "I can set that up with you. " : "Got it. ") + known + "When should it run?", function (body) { body.append(choiceEl(WHEN_OPTS, function (k) { s.when = k; advance(); })); });
-      if (st === "mode") return neoSay((first ? "I can set that up with you. " : "Got it. ") + known + "How much should it do on its own? **Posting, deleting and GST number changes always wait for your approval.**", function (body) { body.append(choiceEl(MODE_OPTS, function (k) { s.mode = k; advance(); })); });
-      var name = w.name + " Automation";
-      return neoSay("Here is what I will create. Check it over, or tell me what to change.", function (body) {
-        var card = el('<div class="nc-card nc-plan"><h3><span>' + esc(name) + "</span><span>Draft</span></h3></div>");
-        [["Does", "Neo will " + w.does], ["Runs", WHEN_LBL[s.when].charAt(0).toUpperCase() + WHEN_LBL[s.when].slice(1)], ["On its own", MODE_LBL[s.mode].replace(/^It /, "").replace(/^./, function (c) { return c.toUpperCase(); })], ["Always needs your approval", "Posting entries, deleting documents, changing GST numbers"]].forEach(function (d) { card.append(el('<div class="nc-row" style="animation:none"><div class="nc-n">' + esc(d[0]) + '</div><div class="nc-m">' + esc(d[1]) + "</div></div>")); });
-        var btns = el('<div class="nc-btns"></div>'), ok = el('<button class="nc-btn nc-pri" type="button">Create agent</button>'), ed = el('<button class="nc-btn" type="button">Change something</button>');
-        ok.onclick = function () { btns.remove(); thread.append(userEl("Create agent")); createFlowAgent(); };
-        ed.onclick = function () { btns.remove(); thread.append(userEl("Change something")); neoSay("What would you like to change?", function (b2) { b2.append(choiceEl([["what", "What it does"], ["when", "When it runs"], ["mode", "How much it does on its own"]], function (k) { s[k] = null; advance(); })); }); };
-        btns.append(ok, ed); body.append(card, btns);
-      });
+      var lead = first ? "I can set that up with you. " : "Got it. ";
+      if (st === "what") { var t1 = (first ? "I can set that up with you. " : "") + "What should it take care of?"; return neoSay(t1, function (body) { body.append(stageChips()); }, { k: "say", text: t1 }); }
+      if (st === "when") { var t2 = lead + known + "When should it run?"; return neoSay(t2, function (body) { body.append(stageChips()); }, { k: "say", text: t2 }); }
+      if (st === "mode") { var t3 = lead + known + "How much should it do on its own? **Posting, deleting and GST number changes always wait for your approval.**"; return neoSay(t3, function (body) { body.append(stageChips()); }, { k: "say", text: t3 }); }
+      var name = w.name + " Automation", rows = [["Does", "Neo will " + w.does], ["Runs", WHEN_LBL[s.when].charAt(0).toUpperCase() + WHEN_LBL[s.when].slice(1)], ["On its own", MODE_LBL[s.mode].replace(/^It /, "").replace(/^./, function (c) { return c.toUpperCase(); })], ["Always needs your approval", "Posting entries, deleting documents, changing GST numbers"]];
+      var t4 = "Here is what I will create. Check it over, or tell me what to change.";
+      return neoSay(t4, function (body) { body.append(planEl(name, rows), planBtns()); }, { k: "plan", text: t4, name: name, rows: rows });
     }
     async function createFlowAgent() {
       var spec = flowSpec(), s = flow.slots;
@@ -398,42 +473,41 @@
           var li = el('<li><span class="nc-ic"><span class="nc-ring"></span></span><span class="nc-shim">' + st[i] + "</span></li>"); ul.append(li); await sleep(650, id);
           li.className = "done"; li.innerHTML = '<span class="nc-ic">' + TICK + "</span><span>" + st[i] + "</span>";
         }
-      });
-      ST.newAgents = (ST.newAgents || []).concat([spec]); var a = activeItem(); if (a) { a.title = spec.name; a.sc = "automation"; } save(); renderHist(); setTitle();
-      if (window.NeoWorkspace) NeoWorkspace.addAgent(spec); else loadWS(function () { NeoWorkspace.addAgent(spec); });
-      flow = null;
-      await neoSay("**" + spec.name + "** is live. It will run " + WHEN_LBL[s.when] + ". " + MODE_LBL[s.mode] + ". You can find it under Agents.", function (body) {
-        var btns = el('<div class="nc-btns"></div>'), v = el('<button class="nc-btn nc-pri" type="button">View agent</button>'), n = el('<button class="nc-btn" type="button">Automate something else</button>');
-        v.onclick = function () { if (!expanded) inst.setExpanded(true); loadWS(function () { NeoWorkspace.navigate("/agents/" + spec.id); }); };
-        n.onclick = function () { start("I want to automate a task"); };
-        btns.append(v, n); body.append(btns);
-      });
+      }, { k: "say", text: "Creating it now." });
+      ST.newAgents = (ST.newAgents || []).concat([spec]);
+      var a = activeItem(); if (a) { a.title = spec.name; a.agentId = spec.id; } flow = null; persistFlow(); renderHist(); setTitle();
+      if (window.NeoWorkspace) NeoWorkspace.addAgent(spec); else loadWS(function (err) { if (!err) NeoWorkspace.addAgent(spec); });
+      var t = "**" + spec.name + "** is live. It will run " + WHEN_LBL[s.when] + ". " + MODE_LBL[s.mode] + ". You can find it under Agents.";
+      await neoSay(t, function (body) { body.append(createdBtns(spec.id)); }, { k: "created", id: spec.id, name: spec.name, text: t });
     }
     async function flowStart(text) {
-      stop(); ensureItem(text); thread.append(userEl(text));
-      flow = { slots: parseSlots(text), stage: null }; flow.slots.mode = flow.slots.mode || null; await advance(true);
+      stop(); ensureItem(text); thread.append(userEl(text)); record({ u: text });
+      flow = { slots: parseSlots(text), stage: null }; await advance(true);
     }
     async function flowReply(text) {
-      stop(); thread.append(userEl(text));
-      var got = parseSlots(text), st = flow.stage, s = flow.slots;
-      if (st !== "confirm" && got[st]) s[st] = got[st];
-      else if (st === "confirm") { ["what", "when", "mode"].forEach(function (k) { if (got[k] && got[k] !== s[k]) s[k] = got[k]; }); }
-      else { var any = ["what", "when", "mode"].some(function (k) { return got[k] && !s[k]; }); if (!any) { return neoSay("I did not catch that. Pick one below, or say it in a few words.", function (body) { var m = { what: WHAT_OPTS, when: WHEN_OPTS, mode: MODE_OPTS }[st]; body.append(choiceEl(m, function (k) { s[st] = k; advance(); })); }); } ["what", "when", "mode"].forEach(function (k) { if (got[k] && !s[k]) s[k] = got[k]; }); }
-      await advance();
+      stop(); thread.append(userEl(text)); record({ u: text });
+      var got = parseSlots(text), st = flow.stage, s = flow.slots, any = ["what", "when", "mode"].some(function (k) { return got[k]; });
+      if (st === "confirm" || st === "edit") {
+        if (!any) { var t0 = "I did not catch a change. Pick what to change, or say it in a few words."; return neoSay(t0, function (body) { flow.stage = "edit"; persistFlow(); body.append(stageChips()); }, { k: "say", text: t0 }); }
+        ["what", "when", "mode"].forEach(function (k) { if (got[k]) s[k] = got[k]; });
+      } else if (got[st]) s[st] = got[st];
+      else if (any) ["what", "when", "mode"].forEach(function (k) { if (got[k] && !s[k]) s[k] = got[k]; });
+      else { var t1 = "I did not catch that. Pick one below, or say it in a few words."; return neoSay(t1, function (body) { body.append(stageChips()); }, { k: "say", text: t1 }); }
+      persistFlow(); await advance();
     }
 
-    /* composer */
+    /* ---------- composer ---------- */
     function renderFiles() {
       fchips.innerHTML = "";
       files.forEach(function (f, i) { var c = el('<span class="nc-fchip">' + esc(f) + '<button type="button" aria-label="Remove ' + esc(f) + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>'); c.querySelector("button").onclick = function () { files.splice(i, 1); renderFiles(); input.focus(); }; fchips.append(c); });
       if (!running) send.disabled = !input.value.trim() && !files.length;
     }
-    fileIn.addEventListener("change", function () { Array.prototype.forEach.call(fileIn.files, function (f) { files.push(f.name); }); fileIn.value = ""; renderFiles(); });
+    fileIn.addEventListener("change", function () { Array.prototype.forEach.call(fileIn.files, function (f) { files.push(f.name); }); fileIn.value = ""; renderFiles(); input.focus(); });
     $("[data-attach]").onclick = function () { fileIn.click(); };
     form.addEventListener("submit", function (e) {
       e.preventDefault(); var v = input.value.trim(); if (running || (!v && !files.length)) return;
-      var t = v || "Please read the attached file"; if (files.length) t += " (attached: " + files.join(", ") + ")";
-      input.value = ""; input.style.height = "32px"; files = []; renderFiles(); start(t);
+      var t = v || "Please read the attached file" + (files.length > 1 ? "s" : ""); if (files.length) t += " (attached: " + files.join(", ") + ")";
+      var sent = files.slice(); input.value = ""; input.style.height = "32px"; files = []; renderFiles(); start(t, { files: sent });
     });
     send.addEventListener("click", function () { if (running) stop(); });
     input.addEventListener("input", function () { input.style.height = "32px"; input.style.height = Math.min(input.scrollHeight, 104) + "px"; if (!running) send.disabled = !input.value.trim() && !files.length; });
@@ -449,8 +523,8 @@
     histBtn.onclick = function () { openHist(hist.hidden); };
     $("[data-hclose]").onclick = function () { openHist(false); };
     root.querySelectorAll("[data-new]").forEach(function (b) { b.onclick = newChat; });
-    var expBtn = $("[data-expand]");
-    var navRO = null;
+
+    /* ---------- expand in place (product pages) ---------- */
     function trackNav() {
       whenNav(function () {
         var a = navAside(), set = function () { root.style.setProperty("--nc-left", a.getBoundingClientRect().right + "px"); };
@@ -467,51 +541,54 @@
     if (opts.inPlace) document.addEventListener("click", function (e) {
       var l = expanded && e.target.closest && e.target.closest("#" + PNAV + " a:not(#nav-neo)"); if (l) inst.setExpanded(false, true);
     }, true);
-    /* In-place expand (side panel host): the same instance grows into the full layout, so the thread, a running answer,
-       drafts, review state and history carry over untouched. Otherwise onExpand navigates (Neo page -> back to the app). */
-    function setFull(on) { mode = on ? "full" : "panel"; root.classList.toggle("nc-full", on); syncLayout(); renderHist(); }
+    function setFull(on) { mode = on ? "full" : "panel"; root.classList.toggle("nc-full", on); syncLayout(); }
+    function screenOn(on) { screenEl.hidden = !on; root.classList.toggle("nc-onscreen", on); }
+    function chatHash() { return "/chat/" + (ST.active != null ? ST.active : "new"); }
+    function wsNote(text) { var n = $("[data-wsnav]"); n.innerHTML = '<p class="nc-wsnote">' + esc(text) + "</p>"; }
     inst.setExpanded = function (on, instant) {
       if (!opts.inPlace || on === expanded) return;
       expanded = on; ST.expanded = on; save(); clearTimeout(expT);
-      document.body.classList.toggle("nc-neo-full", on); expBtn.innerHTML = on ? COLLAPSE : EXPAND; expBtn.setAttribute("aria-label", on ? "Minimize to floating chat" : "Expand Neo");
+      document.body.classList.toggle("nc-neo-full", on); expBtn.innerHTML = on ? COLLAPSE : EXPAND; expBtn.setAttribute("aria-label", on ? "Minimize to floating chat" : "Expand Neo"); expBtn.title = on ? "Minimize" : "Expand";
+      var nn = document.getElementById("nav-neo"); if (nn) { if (on) nn.setAttribute("aria-current", "page"); else nn.removeAttribute("aria-current"); }
       var quick = instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (instant) { root.classList.add("nc-notrans"); requestAnimationFrame(function () { requestAnimationFrame(function () { root.classList.remove("nc-notrans"); }); }); }
-      /* Sidebar and panel width animate together (one 240ms move) instead of one after the other. */
       if (on) {
         trackNav(); inst.ensureWS(); setFull(true); root.classList.add("nc-pre"); void root.offsetWidth;
         root.classList.add("nc-expanded"); root.classList.remove("nc-pre");
       } else {
-        releaseNav(); inst.resetWS(); root.classList.add("nc-pre"); root.classList.remove("nc-expanded");
+        releaseNav(); screenOn(false); if (window.NeoWorkspace && wsAttached) NeoWorkspace.setRoute(chatHash());
+        root.classList.add("nc-pre"); root.classList.remove("nc-expanded");
         var settle = function () { setFull(false); root.classList.remove("nc-pre"); };
         if (quick) settle(); else expT = setTimeout(settle, 250);
       }
     };
     inst.expanded = function () { return expanded; };
-    var screenEl = $(".nc-screen");
-    function screenOn(on) { screenEl.hidden = !on; root.classList.toggle("nc-onscreen", on); }
-    inst.screenOn = screenOn;
-    inst.routeChat = function (id, q) {
+    inst.routeChat = function (id, q, about) {
       screenOn(false);
-      if (q) { inst.start(q); return; }
+      if (q) { inst.start(q, { kind: KIND2SC[about] || null }); return; }
       if (id === "new" || id == null) { if (ST.active != null) newChat(); }
       else { var n = +id; if (!isNaN(n) && n !== ST.active) inst.open(n); }
+      input.focus();
     };
-    var wsAttached = false;
-    function chatHash() { return "/chat/" + (ST.active != null ? ST.active : "new"); }
     inst.ensureWS = function () {
-      loadWS(function () {
-        if (!wsAttached) { wsAttached = true; NeoWorkspace.attach({ nav: $("[data-wsnav]"), screen: $("[data-sbody]"), hash: chatHash(), onScreen: screenOn, onChat: inst.routeChat }); }
+      if (!wsAttached && !window.NeoWorkspace) wsNote("Loading Neo…");
+      loadWS(function (err) {
+        if (err) { wsNote("The Neo workspace could not load. Chat still works; reload the page to try again."); return; }
+        if (!wsAttached) { wsAttached = true; NeoWorkspace.attach({ nav: $("[data-wsnav]"), screen: $("[data-sbody]"), hash: chatHash(), onScreen: screenOn, onChat: inst.routeChat, onLeave: function () { ST.expanded = false; ST.navHeld = false; save(); } }); }
         else NeoWorkspace.setRoute(chatHash());
       });
     };
-    inst.resetWS = function () { screenOn(false); if (window.NeoWorkspace && wsAttached) NeoWorkspace.setRoute(chatHash()); };
+    inst.focusChat = function () {
+      if (root.classList.contains("nc-onscreen") && window.NeoWorkspace) NeoWorkspace.navigate("/chat/" + (ST.active != null ? ST.active : "new"));
+      input.focus();
+    };
     if (opts.inPlace) { $("[data-sexpand]").onclick = function () { inst.setExpanded(false); }; $("[data-sclose]").onclick = function () { if (opts.onClose) opts.onClose(); }; }
     expBtn.onclick = function () { if (opts.inPlace) inst.setExpanded(!expanded); else if (opts.onExpand) opts.onExpand(ST.active); };
     $("[data-close]").onclick = function () { if (opts.onClose) opts.onClose(); };
     (mq.addEventListener ? mq.addEventListener("change", syncLayout) : mq.addListener(syncLayout));
 
     /* public */
-    inst.start = function (t) { if (ST.active != null) { ST.active = null; save(); showEmpty(); } start(t); };
+    inst.start = function (t, o) { if (ST.active != null) { ST.active = null; flow = null; save(); showEmpty(); } start(t, o); };
     inst.open = function (id) { if (id != null && ST.hs.some(function (h) { return h.id === id; })) openSaved(id); };
     inst.newChat = newChat; inst.focus = function () { input.focus(); }; inst.stop = stop; inst.refresh = function () { renderHist(); setTitle(); };
     inst.root = root;
@@ -521,7 +598,7 @@
     return inst;
   }
 
-  /* ---------- side panel on app pages ---------- */
+  /* ---------- floating panel on product pages ---------- */
   function hostPanel() {
     document.body.classList.add("nc-host");
     var tab = el('<button class="nc-tab" type="button" title="Ask Neo (Ctrl J)"><span class="nc-mark" aria-hidden="true">' + STAR + '</span><span class="nc-lbl">Ask Neo</span></button>');
@@ -530,18 +607,18 @@
     var inst = mount(panel, { mode: "panel", inPlace: true,
       onHistory: function () { if (window.NeoWorkspace) NeoWorkspace.refreshNav(); },
       onClose: function () { setOpen(false); } });
-    /* warm up the Neo workspace code so the sidebar is ready the moment Neo expands */
     function warm() { setTimeout(function () { loadWS(function () {}); }, 400); }
     if (document.readyState === "complete") warm(); else window.addEventListener("load", warm);
     function setOpen(o) { ST.open = o; save(); if (!o && inst.expanded()) setTimeout(function () { if (!ST.open) inst.setExpanded(false, true); }, 260); panel.classList.toggle("nc-open", o); tab.hidden = o; panel.setAttribute("aria-hidden", String(!o)); var pill = document.querySelector('header button[aria-label="Ask Neo"]'); if (pill) pill.setAttribute("aria-pressed", String(o)); if (o) inst.focus(); }
+    /* Inside the expanded Neo the pill and Ctrl J focus the composer; outside they open/close the floating panel. */
+    function toggle() { if (ST.open && inst.expanded()) inst.focusChat(); else setOpen(!ST.open); }
     tab.onclick = function () { setOpen(true); };
-    /* The Neo item in the main nav is another entry point into the same expanded state, not a separate page. */
     document.addEventListener("click", function (e) {
       var n = e.target.closest && e.target.closest("#nav-neo"); if (!n || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
-      e.preventDefault(); e.stopPropagation(); setOpen(true); inst.setExpanded(true); }, true);
-    document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest('header button[aria-label="Ask Neo"]'); if (b) { e.preventDefault(); e.stopPropagation(); setOpen(!ST.open); } }, true);
-    document.addEventListener("keydown", function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") { e.preventDefault(); e.stopPropagation(); setOpen(!ST.open); } }, true);
-    new MutationObserver(function () { var pill = document.querySelector('header button[aria-label="Ask Neo"]'); if (pill && pill.getAttribute("aria-pressed") !== String(ST.open)) pill.setAttribute("aria-pressed", String(ST.open)); }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-pressed"] });
+      e.preventDefault(); e.stopPropagation(); if (ST.open && inst.expanded()) inst.focusChat(); else { setOpen(true); inst.setExpanded(true); } }, true);
+    document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest('header button[aria-label="Ask Neo"]'); if (b) { e.preventDefault(); e.stopPropagation(); toggle(); } }, true);
+    document.addEventListener("keydown", function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") { e.preventDefault(); e.stopPropagation(); toggle(); } }, true);
+    new MutationObserver(function () { var pill = document.querySelector('header button[aria-label="Ask Neo"]'); if (pill && pill.getAttribute("aria-pressed") !== String(ST.open)) pill.setAttribute("aria-pressed", String(ST.open)); }).observe(document.body, { childList: true, subtree: true });
     setOpen(!!ST.open);
     if (ST.open && ST.expanded) inst.setExpanded(true, true);
     window.NeoChat.panel = inst;
