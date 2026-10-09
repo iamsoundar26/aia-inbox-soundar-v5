@@ -55,11 +55,14 @@
       text: "**186 transactions** checked for September. **179 match** GSTR-2B, **6 have amount mismatches** and **1 vendor GST number** differs from your vendor record.",
       card: { title: "GST check · September", aside: "7 issues", rows: [["Amount mismatch", "6 purchase bills differ from GSTR-2B by ₹12 to ₹480", "6", ["Check", "warn"]], ["GSTIN differs from vendor record", "Zoho Corporation", "1", ["Blocked", "warn"]]] },
       follow: ["What needs my attention?", "Work the Inbox with me"] },
+    automation: { match: /^\u0000$/, q: "", steps: ["Understood the request", "Asked the setup questions", "Created the agent"],
+      text: "We set this up together in chat. **The agent is under Agents** and asks for your approval before anything changes in your books.", follow: ["Automate a task"] },
     generic: { match: /.*/, q: "",
       steps: ["Looking through your books", "Preparing a draft for you"],
       text: "I can help with that. This is a first look; **nothing has been posted or changed** in your books.",
       follow: ["Work the Inbox with me", "What needs my attention?"] }
   };
+  var SC_EXACT = {}; Object.keys(SC).forEach(function (k) { if (SC[k].q) SC_EXACT[SC[k].q] = 1; });
   var SEED = [
     { id: 1, title: "Work the Inbox with me", group: "Today", when: "9:12 am", sc: "inbox" },
     { id: 2, title: "Missing GST on Meera Stationers", group: "Today", when: "8:40 am", sc: "attention" },
@@ -83,7 +86,7 @@
   function nowLabel() { var d = new Date(), h = d.getHours(), m = d.getMinutes(); return ((h % 12) || 12) + ":" + (m < 10 ? "0" : "") + m + (h < 12 ? " am" : " pm"); }
 
   /* Neo workspace (nav + screens) is the Neo page's own code, loaded lazily so the expanded view and the Neo tab are literally the same UI. */
-  var NEO_V = "14";
+  var NEO_V = "17";
   function loadWS(cb) {
     if (window.NeoWorkspace) return cb();
     if (loadWS.q) { loadWS.q.push(cb); return; }
@@ -146,7 +149,7 @@
       openSaved(+b.dataset.id); if (!docked()) { histOpen = false; syncLayout(); } thread.focus();
     });
     search.addEventListener("input", renderHist);
-    function openSaved(id) { var item = ST.hs.filter(function (h) { return h.id === id; })[0]; if (!item) return; stop(); ST.active = item.id; save(); renderSaved(item); renderHist(); setTitle(); workOpen = false; syncLayout(); }
+    function openSaved(id) { flow = null; var item = ST.hs.filter(function (h) { return h.id === id; })[0]; if (!item) return; stop(); ST.active = item.id; save(); renderSaved(item); renderHist(); setTitle(); workOpen = false; syncLayout(); }
 
     /* review panel */
     function tagFor(key, fallback) { var st = ST.billState[key]; if (st === "approved") return ["Approved", "ok"]; if (st === "skipped") return ["Skipped", "info"]; if (st === "deleted") return ["Deleted", "info"]; if (st === "kept") return ["Kept", "info"]; return BILLS[key] ? BILLS[key].tag : fallback; }
@@ -231,7 +234,7 @@
       });
       e.append(home); thread.append(e);
     }
-    function newChat() { stop(); ST.active = null; save(); showEmpty(); renderHist(); setTitle(); workOpen = false; if (!docked()) histOpen = false; syncLayout(); input.focus(); }
+    function newChat() { stop(); flow = null; ST.active = null; save(); showEmpty(); renderHist(); setTitle(); workOpen = false; if (!docked()) histOpen = false; syncLayout(); input.focus(); }
 
     /* run */
     function stop() {
@@ -250,6 +253,9 @@
     async function start(text, o) {
       o = o || {};
       if (running) stop();
+      if (!o.resume && flow && !SC_EXACT[text]) return flowReply(text);
+      if (!o.resume && AUTO_RE.test(text) && !SC_EXACT[text]) return flowStart(text);
+      flow = null;
       var key = pick(text), sc = SC[key], id = ++runId, failed = false;
       var first = thread.querySelector(".nc-empty"); if (first) first.remove();
       if (!o.resume && ST.active == null) { var h = { id: ++ST.uid, title: text.length > 34 ? text.slice(0, 32) + "…" : text, group: "Today", when: nowLabel(), sc: key }; ST.hs.unshift(h); ST.active = h.id; save(); renderHist(); setTitle(); }
@@ -300,6 +306,120 @@
         body.append(ch); down();
         r.classList.remove("nc-working"); r.removeAttribute("aria-busy"); setRunning(false);
       } catch (e) { if (e !== "cancel") throw e; }
+    }
+
+
+    /* ---------- conversational automation: chat first, clarify when needed, confirm before creating ---------- */
+    var AUTO_RE = /\bautomat|\bschedule\b|every (day|morning|evening|week|month|mon|tue|wed|thu|fri|sat|sun)|\bdaily\b|\bweekly\b|\bmonthly\b|\bwhenever\b|\bworkflow\b|\b(create|make|build|set ?up)\b.{0,14}\b(agent|workflow)|\bremind me\b/i;
+    var WHAT_OPTS = [["inv", "Review new invoices"], ["gst", "Check GST mismatches"], ["dups", "Find duplicate bills"], ["bank", "Reconcile banking"], ["month", "Prepare the month-end close"]];
+    var WHEN_OPTS = [["arrives", "When a new bill arrives"], ["morning", "Every morning at 9:00"], ["monday", "Every Monday at 9:00"], ["monthend", "On the last working day of the month"]];
+    var MODE_OPTS = [["approve", "Prepare it, then ask me before anything is posted"], ["suggest", "Only suggest, never act"], ["auto", "Handle clear cases, ask me on the rest"]];
+    var WHAT_INFO = {
+      inv: { short: "review new invoices", name: "Invoice Review", icon: "receipt", does: "read new invoices, check GST and duplicates, and suggest account coding", caps: ["Extract invoice information", "Validate GST", "Check duplicates", "Suggest account coding"], sources: ["Purchases", "Vendors", "GST"] },
+      gst: { short: "check GST mismatches", name: "GST Check", icon: "gst", does: "compare purchase bills with GSTR-2B and flag mismatches and missing GST numbers", caps: ["Validate GSTIN", "Compare with GSTR-2B", "Flag ineligible ITC"], sources: ["Purchases", "GST", "Vendors"] },
+      dups: { short: "find duplicate bills", name: "Duplicate Finder", icon: "copy", does: "compare vendor, bill number and amount to catch duplicate bills", caps: ["Compare vendor and bill number", "Match amounts and dates", "Flag certain duplicates"], sources: ["Purchases", "Vendors"] },
+      bank: { short: "reconcile your bank", name: "Bank Reconciliation", icon: "bank", does: "match bank transactions to your books and list what is left unmatched", caps: ["Match transactions", "Identify exceptions", "Suggest corrections"], sources: ["Banking", "Accounting"] },
+      month: { short: "prepare the month-end close", name: "Month-End Close", icon: "cal", does: "check unposted documents, unreconciled items and pending GST, then prepare a close summary", caps: ["Check unposted documents", "Check unreconciled items", "Prepare close summary"], sources: ["Purchases", "Banking", "GST", "Accounting"] }
+    };
+    var WHEN_LBL = { arrives: "when a new bill arrives", morning: "every morning at 9:00", monday: "every Monday at 9:00", monthend: "on the last working day of the month" };
+    var MODE_LBL = { approve: "It prepares the work and asks you before anything is posted", suggest: "It only suggests and never changes your books", auto: "It handles clear cases and asks you on the rest" };
+    var flow = null;
+    function optLabel(list, k) { return (list.filter(function (o) { return o[0] === k; })[0] || [])[1]; }
+    function parseSlots(t) {
+      var o = {};
+      o.what = /gst|gstr|\bitc\b/i.test(t) ? "gst" : /duplicate/i.test(t) ? "dups" : /reconcil|bank|statement/i.test(t) ? "bank" : /month.?end|clos(e|ing)/i.test(t) ? "month" : /invoice|bill|receipt|expense/i.test(t) ? "inv" : null;
+      o.when = /new (bill|invoice|document)|(bill|invoice|document)s? (arrive|come in|is uploaded|are uploaded|upload)|whenever|as soon as|when .{0,20}(arrive|upload|receiv)/i.test(t) ? "arrives" : /month.?end|last (working )?day|every month|monthly/i.test(t) ? "monthend" : /monday|weekly|every week/i.test(t) ? "monday" : /morning|daily|every day|each day|every (evening|night)/i.test(t) ? "morning" : null;
+      o.mode = /only suggest|never act|don'?t (act|post)/i.test(t) ? "suggest" : /handle clear|automatically|on its own|handle (it|them)/i.test(t) ? "auto" : /ask me|approv|confirm/i.test(t) ? "approve" : null;
+      return o;
+    }
+    function ensureItem(text) {
+      var first = thread.querySelector(".nc-empty"); if (first) first.remove();
+      if (ST.active == null) { var h = { id: ++ST.uid, title: text.length > 34 ? text.slice(0, 32) + "…" : text, group: "Today", when: nowLabel(), sc: "automation" }; ST.hs.unshift(h); ST.active = h.id; save(); renderHist(); setTitle(); }
+      else { var a = activeItem(); if (a) { a.sc = "automation"; save(); } }
+    }
+    async function neoSay(text, after) {
+      var id = ++runId; setRunning(true);
+      var r = el('<div class="nc-ai nc-working" aria-busy="true">' + AV + '<div class="nc-body"><span class="nc-sr">Neo says: </span></div></div>'), body = r.querySelector(".nc-body");
+      thread.append(r); cur = { root: r, body: body }; down();
+      try {
+        var think = el('<div class="nc-think"><span class="nc-shim">Thinking</span></div>'); body.append(think); await sleep(450, id); think.remove();
+        var p = el('<p class="nc-ans" aria-hidden="true"></p>'); body.append(p);
+        var parts = text.split("**");
+        for (var j = 0; j < parts.length; j++) {
+          var words = parts[j].split(/(\s+)/);
+          for (var k = 0; k < words.length; k++) {
+            if (!words[k]) continue;
+            var w = document.createElement(j % 2 ? "b" : "span"); w.className = "nc-w"; w.textContent = words[k]; p.append(w);
+            if (words[k].trim()) await sleep(16, id);
+          }
+          down();
+        }
+        p.removeAttribute("aria-hidden"); say(plain(text));
+        if (after) await after(body, id);
+        r.classList.remove("nc-working"); r.removeAttribute("aria-busy"); setRunning(false); down();
+      } catch (e) { if (e !== "cancel") throw e; }
+    }
+    function choiceEl(opts, pick) {
+      var ch = el('<div class="nc-chips" role="group" aria-label="Choose one"></div>');
+      opts.forEach(function (o) {
+        var b = el('<button class="nc-chip" type="button">' + esc(o[1]) + "</button>");
+        b.onclick = function () { ch.remove(); thread.append(userEl(o[1])); pick(o[0], o[1]); down(); };
+        ch.append(b);
+      });
+      return ch;
+    }
+    function nextStage() { var s = flow.slots; return !s.what ? "what" : !s.when ? "when" : !s.mode ? "mode" : "confirm"; }
+    function flowSpec() {
+      var s = flow.slots, w = WHAT_INFO[s.what], approve = s.mode === "approve" || s.mode === "auto";
+      return { id: "auto-" + Date.now(), name: w.name + " Automation", short: "Neo will " + w.short + " " + WHEN_LBL[s.when] + ".", long: "Created in chat. Neo will " + w.does + ", " + WHEN_LBL[s.when] + ". " + MODE_LBL[s.mode] + ".", caps: w.caps, sources: w.sources, status: "ready", icon: w.icon, runs: [], schedule: s.when,
+        perms: { read: w.sources, suggest: ["Account coding", "GST treatment"], execute: s.mode === "suggest" ? [] : [["Prepare voucher", s.mode === "auto"]], approve: ["Post accounting entry", "Delete document", "Change a GST number"] } };
+    }
+    async function advance(first) {
+      var st = flow.stage = nextStage(), s = flow.slots, w = WHAT_INFO[s.what];
+      var known = s.what ? "Neo will **" + w.short + "**" + (s.when ? " " + WHEN_LBL[s.when] : "") + ". " : "";
+      if (st === "what") return neoSay((first ? "I can set that up with you. " : "") + "What should it take care of?", function (body) { body.append(choiceEl(WHAT_OPTS, function (k) { s.what = k; advance(); })); });
+      if (st === "when") return neoSay((first ? "I can set that up with you. " : "Got it. ") + known + "When should it run?", function (body) { body.append(choiceEl(WHEN_OPTS, function (k) { s.when = k; advance(); })); });
+      if (st === "mode") return neoSay((first ? "I can set that up with you. " : "Got it. ") + known + "How much should it do on its own? **Posting, deleting and GST number changes always wait for your approval.**", function (body) { body.append(choiceEl(MODE_OPTS, function (k) { s.mode = k; advance(); })); });
+      var name = w.name + " Automation";
+      return neoSay("Here is what I will create. Check it over, or tell me what to change.", function (body) {
+        var card = el('<div class="nc-card nc-plan"><h3><span>' + esc(name) + "</span><span>Draft</span></h3></div>");
+        [["Does", "Neo will " + w.does], ["Runs", WHEN_LBL[s.when].charAt(0).toUpperCase() + WHEN_LBL[s.when].slice(1)], ["On its own", MODE_LBL[s.mode].replace(/^It /, "").replace(/^./, function (c) { return c.toUpperCase(); })], ["Always needs your approval", "Posting entries, deleting documents, changing GST numbers"]].forEach(function (d) { card.append(el('<div class="nc-row" style="animation:none"><div class="nc-n">' + esc(d[0]) + '</div><div class="nc-m">' + esc(d[1]) + "</div></div>")); });
+        var btns = el('<div class="nc-btns"></div>'), ok = el('<button class="nc-btn nc-pri" type="button">Create agent</button>'), ed = el('<button class="nc-btn" type="button">Change something</button>');
+        ok.onclick = function () { btns.remove(); thread.append(userEl("Create agent")); createFlowAgent(); };
+        ed.onclick = function () { btns.remove(); thread.append(userEl("Change something")); neoSay("What would you like to change?", function (b2) { b2.append(choiceEl([["what", "What it does"], ["when", "When it runs"], ["mode", "How much it does on its own"]], function (k) { s[k] = null; advance(); })); }); };
+        btns.append(ok, ed); body.append(card, btns);
+      });
+    }
+    async function createFlowAgent() {
+      var spec = flowSpec(), s = flow.slots;
+      await neoSay("Creating it now.", async function (body, id) {
+        var ul = el('<ul class="nc-steps"></ul>'); body.append(ul);
+        for (var i = 0, st = ["Setting up the agent", "Applying your approval rules"]; i < st.length; i++) {
+          var li = el('<li><span class="nc-ic"><span class="nc-ring"></span></span><span class="nc-shim">' + st[i] + "</span></li>"); ul.append(li); await sleep(650, id);
+          li.className = "done"; li.innerHTML = '<span class="nc-ic">' + TICK + "</span><span>" + st[i] + "</span>";
+        }
+      });
+      ST.newAgents = (ST.newAgents || []).concat([spec]); var a = activeItem(); if (a) { a.title = spec.name; a.sc = "automation"; } save(); renderHist(); setTitle();
+      if (window.NeoWorkspace) NeoWorkspace.addAgent(spec); else loadWS(function () { NeoWorkspace.addAgent(spec); });
+      flow = null;
+      await neoSay("**" + spec.name + "** is live. It will run " + WHEN_LBL[s.when] + ". " + MODE_LBL[s.mode] + ". You can find it under Agents.", function (body) {
+        var btns = el('<div class="nc-btns"></div>'), v = el('<button class="nc-btn nc-pri" type="button">View agent</button>'), n = el('<button class="nc-btn" type="button">Automate something else</button>');
+        v.onclick = function () { if (!expanded) inst.setExpanded(true); loadWS(function () { NeoWorkspace.navigate("/agents/" + spec.id); }); };
+        n.onclick = function () { start("I want to automate a task"); };
+        btns.append(v, n); body.append(btns);
+      });
+    }
+    async function flowStart(text) {
+      stop(); ensureItem(text); thread.append(userEl(text));
+      flow = { slots: parseSlots(text), stage: null }; flow.slots.mode = flow.slots.mode || null; await advance(true);
+    }
+    async function flowReply(text) {
+      stop(); thread.append(userEl(text));
+      var got = parseSlots(text), st = flow.stage, s = flow.slots;
+      if (st !== "confirm" && got[st]) s[st] = got[st];
+      else if (st === "confirm") { ["what", "when", "mode"].forEach(function (k) { if (got[k] && got[k] !== s[k]) s[k] = got[k]; }); }
+      else { var any = ["what", "when", "mode"].some(function (k) { return got[k] && !s[k]; }); if (!any) { return neoSay("I did not catch that. Pick one below, or say it in a few words.", function (body) { var m = { what: WHAT_OPTS, when: WHEN_OPTS, mode: MODE_OPTS }[st]; body.append(choiceEl(m, function (k) { s[st] = k; advance(); })); }); } ["what", "when", "mode"].forEach(function (k) { if (got[k] && !s[k]) s[k] = got[k]; }); }
+      await advance();
     }
 
     /* composer */
@@ -427,6 +547,6 @@
     window.NeoChat.panel = inst;
   }
 
-  window.NeoChat = { mount: mount, history: function () { return ST.hs; }, active: function () { return ST.active; }, setActive: function (id) { ST.active = id; save(); }, state: function () { return ST; } };
+  window.NeoChat = { save: save, mount: mount, history: function () { return ST.hs; }, active: function () { return ST.active; }, setActive: function (id) { ST.active = id; save(); }, state: function () { return ST; } };
   if (!document.getElementById("app")) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", hostPanel); else hostPanel(); }
 })();

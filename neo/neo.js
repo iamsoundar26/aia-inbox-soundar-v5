@@ -309,13 +309,10 @@
   function AgentDetail(id) {
     var a = agent(id); if (!a) return Agents();
     var running = S.runs.filter(function (r) { return r.agent === id && r.status === "running"; })[0];
-    return '<div class="page wide"><div class="crumb"><a href="#/">Neo</a>' + icon("chevR", "sm") + '<a href="#/agents">Agents</a>' + icon("chevR", "sm") + "<span>" + esc(a.name) + '</span></div><div class="page-head"><div style="display:flex;gap:14px;align-items:flex-start"><span class="ico" style="width:44px;height:44px;border-radius:12px;background:var(--ai);border:1px solid var(--ai-stroke);color:var(--ai-ink);display:grid;place-items:center;flex:none">' + icon(a.icon, "lg") + "</span><div><h1>" + esc(a.name) + '</h1><p class="sub">' + esc(a.long) + '</p><div style="margin-top:8px;display:flex;gap:8px;align-items:center">' + (a.status === "running" ? pill("run", "Running") : pill("ok", "Ready")) + '<span style="font-size:12px;color:var(--ink-3)">Runs ' + schedLabel(a.schedule) + '</span></div></div></div><div class="actions"><a class="btn" href="#/agents/' + id + '/permissions">' + icon("shield", "sm") + 'View permissions</a><a class="btn" href="#/agents/' + id + '/automation">' + icon("zap", "sm") + 'Automate</a><button class="btn primary" data-run="' + id + '">' + icon("play", "sm") + "Run " + esc(a.name) + "</button></div></div>" +
-      '<div class="detail-grid"><div style="display:flex;flex-direction:column;gap:14px">' +
-      (running ? '<div class="card pad" id="runbox"><div class="section-head" style="margin-bottom:8px"><h2>Current run</h2><a href="#/runs/' + running.id + '">Open run</a></div><p style="color:var(--ink-2);font-size:13px">' + esc(running.desc) + '</p><div class="progress" style="margin:10px 0 6px"><i style="width:' + running.pct + '%"></i></div><p style="font-size:12px;color:var(--ink-2)">' + running.done + " / " + running.total + " · " + running.pct + "%</p></div>" : "") +
-      '<div class="card pad"><div class="section-head"><h2>What this agent does</h2></div><ul class="list-check">' + a.caps.map(function (c) { return "<li>" + icon("check") + esc(c) + "</li>"; }).join("") + "</ul></div>" +
-      '<div class="card pad"><div class="section-head"><h2>Data sources</h2><a href="#/knowledge">Manage knowledge</a></div><ul class="list-check">' + a.sources.map(function (c) { return "<li>" + icon("check") + esc(c) + "</li>"; }).join("") + "</ul></div>" +
-      '<div class="card pad"><div class="section-head"><h2>Trust model</h2></div>' + Trust() + '<p style="font-size:13px;color:var(--ink-2);margin-top:10px">This agent reads and suggests on its own. Anything that changes your books waits for your approval.</p></div></div>' +
-      '<div class="card pad"><div class="section-head"><h2>Recent runs</h2><a href="#/runs">All runs</a></div><ul class="runs-mini">' + (a.runs.length ? "" : '<li style="display:block;color:var(--ink-2)">No runs yet. Run the agent to see results here.</li>') + a.runs.map(function (r) { return '<li><span class="when">' + esc(r.when) + "</span><span><b>" + r.n + '</b> invoices</span><span class="pills">' + (r.ok ? pill("ok", r.ok + " approved") : "") + (r.exc ? pill("warn", r.exc + " exception" + (r.exc > 1 ? "s" : "")) : r.ok ? "" : pill("run", "In progress")) + "</span></li>"; }).join("") + "</ul></div></div></div>";
+    return '<div class="page"><div class="crumb"><a href="#/agents">' + icon("arrowL", "sm") + ' Agents</a></div><div class="page-head"><div><h1>' + esc(a.name) + '</h1><p class="sub">' + esc(a.short) + '</p><div style="margin-top:8px;display:flex;gap:8px;align-items:center">' + (a.status === "running" ? pill("run", "Running") : pill("ok", "Ready")) + '<span style="font-size:12px;color:var(--ink-3)">Runs ' + schedLabel(a.schedule) + '</span></div></div><div class="actions"><a class="btn" href="#/agents/' + id + '/permissions">' + icon("shield", "sm") + 'Permissions</a><button class="btn primary" data-run="' + id + '">' + icon("play", "sm") + "Run now</button></div></div>" +
+      (running ? '<div class="card pad" id="runbox" style="margin-bottom:14px"><div class="section-head" style="margin-bottom:8px"><h2>Current run</h2><a href="#/runs/' + running.id + '">Open run</a></div><p style="color:var(--ink-2);font-size:13px">' + esc(running.desc) + '</p><div class="progress" style="margin:10px 0 6px"><i style="width:' + running.pct + '%"></i></div><p style="font-size:12px;color:var(--ink-2)">' + running.done + " / " + running.total + " · " + running.pct + "%</p></div>" : "") +
+      '<div class="card pad" style="margin-bottom:14px"><div class="section-head"><h2>What it does</h2></div><ul class="list-check">' + a.caps.map(function (c) { return "<li>" + icon("check") + esc(c) + "</li>"; }).join("") + '</ul><p style="font-size:13px;color:var(--ink-2);margin-top:12px">Anything that changes your books waits for your approval. To change what this agent does, ask Neo in chat.</p></div>' +
+      '<div class="card pad"><div class="section-head"><h2>Recent runs</h2><a href="#/runs">All activity</a></div><ul class="runs-mini">' + (a.runs.length ? "" : '<li style="display:block;color:var(--ink-2)">No runs yet.</li>') + a.runs.map(function (r) { return '<li><span class="when">' + esc(r.when) + "</span><span><b>" + r.n + '</b> invoices</span><span class="pills">' + (r.ok ? pill("ok", r.ok + " approved") : "") + (r.exc ? pill("warn", r.exc + " exception" + (r.exc > 1 ? "s" : "")) : r.ok ? "" : pill("run", "In progress")) + "</span></li>"; }).join("") + "</ul></div></div>";
   }
   function suggestName(goal) {
     var g = goal.toLowerCase(); if (!g.trim()) return "";
@@ -324,7 +321,7 @@
     var scope = /\bit\b/.test(g) ? "IT " : /marketing/.test(g) ? "Marketing " : /logistic/.test(g) ? "Logistics " : "";
     return (scope + topic + (task ? " " + task : "") + " Agent").replace(/\s+/g, " ");
   }
-  function schedLabel(s) { return { manual: "manually", arrives: "when a new invoice arrives", morning: "every morning", monday: "every Monday" }[s]; }
+  function schedLabel(s) { return { manual: "manually", arrives: "when a new invoice arrives", morning: "every morning", monday: "every Monday", monthend: "on the last working day of the month" }[s]; }
   function Trust() { return '<div class="trust"><span class="step read">READ</span><span class="arr">' + icon("arrowR", "sm") + '</span><span class="step suggest">SUGGEST</span><span class="arr">' + icon("arrowR", "sm") + '</span><span class="step execute">EXECUTE</span><span class="arr">' + icon("arrowR", "sm") + '</span><span class="step approve">APPROVE</span></div>'; }
   function Permissions(id) {
     var a = agent(id); if (!a) return Agents(); var p = a.perms;
@@ -360,7 +357,7 @@
   function Runs(tab) {
     var tabs = [["running", "Running"], ["attention", "Needs attention"], ["completed", "Completed"]];
     var list = S.runs.filter(function (r) { return tab === "completed" ? r.status !== "running" : r.status === tab; });
-    return '<div class="page wide"><div class="page-head"><div><h1>Neo activity</h1><p class="sub">Every agent run, what it did and what it is waiting on.</p></div></div>' +
+    return '<div class="page wide"><div class="page-head"><div><h1>Activity</h1><p class="sub">What your agents did and what is waiting on you.</p></div></div>' +
       '<div class="btn-row" style="margin-bottom:14px" role="tablist">' + tabs.map(function (t) { return '<a class="btn sm ' + (t[0] === tab ? "primary" : "") + '" role="tab" aria-selected="' + (t[0] === tab) + '" href="#/runs?tab=' + t[0] + '">' + t[1] + "</a>"; }).join("") + "</div>" +
       (list.length ? '<div class="card">' + list.map(function (r) {
         var k = r.status === "running" ? "run" : r.status === "attention" ? "warn" : "ok";
@@ -378,13 +375,12 @@
 
   /* ---------- KNOWLEDGE / SETTINGS ---------- */
   function Knowledge() {
-    return '<div class="page wide"><div class="page-head"><div><h1>Neo Knowledge</h1><p class="sub">What Neo can see when it works on your books. Connected sources are read-only unless an agent is granted more.</p></div><div class="actions"><button class="btn" data-toast="Sources refreshed 4 minutes ago.">' + icon("refresh", "sm") + 'Refresh connections</button></div></div><div class="know-grid">' + Object.keys(KNOW).map(function (g) { return '<div class="card pad know"><div class="section-head"><h2>' + g + "</h2></div><ul>" + KNOW[g].map(function (k) { return "<li><span><b>" + k[0] + '</b><br><span class="meta">' + esc(k[1]) + "</span></span>" + (k[2] === "ok" ? pill("ok", "Connected") : pill("neutral", "Not connected")) + "</li>"; }).join("") + "</ul></div>"; }).join("") + "</div></div>";
+    return '<div class="page wide"><div class="page-head"><div><h1>Knowledge</h1><p class="sub">What Neo can read when it works on your books.</p></div><div class="actions"><button class="btn" data-toast="Sources refreshed 4 minutes ago.">' + icon("refresh", "sm") + 'Refresh connections</button></div></div><div class="know-grid">' + Object.keys(KNOW).map(function (g) { return '<div class="card pad know"><div class="section-head"><h2>' + g + "</h2></div><ul>" + KNOW[g].map(function (k) { return "<li><span><b>" + k[0] + '</b><br><span class="meta">' + esc(k[1]) + "</span></span>" + (k[2] === "ok" ? pill("ok", "Connected") : pill("neutral", "Not connected")) + "</li>"; }).join("") + "</ul></div>"; }).join("") + "</div></div>";
   }
   function Settings() {
-    return '<div class="page"><div class="page-head"><div><h1>Neo settings</h1><p class="sub">How Neo works for ' + USER + " at " + esc(COMPANY) + '.</p></div></div><div class="card pad" style="display:flex;flex-direction:column;gap:14px">' +
+    return '<div class="page"><div class="page-head"><div><h1>Settings</h1><p class="sub">How Neo works for you.</p></div></div><div class="card pad" style="display:flex;flex-direction:column;gap:14px">' +
       '<label class="toggle" style="justify-content:space-between"><span>Show “why” explanations with every suggestion</span><input type="checkbox" id="setExplain"' + (S.explain ? " checked" : "") + '><span class="track"></span></label>' +
       '<label class="toggle" style="justify-content:space-between"><span>Ask before any bulk action, even at high confidence</span><input type="checkbox" checked disabled><span class="track"></span></label>' +
-      '<label class="toggle" style="justify-content:space-between"><span>Keyboard shortcut Ctrl J opens Neo (side panel in the app, composer here)</span><input type="checkbox" checked><span class="track"></span></label>' +
       '<div class="note">' + icon("shield", "sm") + "<span>Approval for posting, deleting and GSTIN changes cannot be switched off.</span></div></div></div>";
   }
 
@@ -514,9 +510,12 @@
     var op = e.target.closest && e.target.closest("[data-open]"); if (op && e.key === "Enter") go("#/chat/" + op.dataset.open);
   });
   window.addEventListener("hashchange", function () { if (!E && app) render(); });
+  (NeoChat.state().newAgents || []).forEach(function (a) { if (!S.agents.some(function (x) { return x.id === a.id; })) S.agents.push(a); });
   window.NeoWorkspace = {
     attach: function (o) { E = o; E.hash = E.hash || "/chat/new"; render(); },
     detach: function () { E = null; },
+    addAgent: function (spec) { if (!S.agents.some(function (a) { return a.id === spec.id; })) S.agents.push(spec); if (E) render(); return spec.id; },
+    navigate: function (h) { if (E) go(h); },
     refreshNav: function () { if (E) E.nav.innerHTML = NavHTML(route()); },
     setRoute: function (h) { if (E) { E.hash = h; E.nav.innerHTML = NavHTML(route()); } },
     route: function () { return E ? route() : null }

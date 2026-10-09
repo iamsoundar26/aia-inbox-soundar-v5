@@ -477,3 +477,4 @@ body.mod-collapsed .neo-scope .modnav .collapse svg { transform: scaleX(-1); }
 .neo-scope .arow b { display: block; font-size: 14px; font-weight: 600; }
 .neo-scope .arow small { display: block; font-size: 13px; color: var(--ink-2); }
 .neo-scope .arow .ast { font-size: 12px; color: var(--ink-2); }
+.neo-scope .crumb a { display: inline-flex; align-items: center; gap: 4px; }

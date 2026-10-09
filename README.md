@@ -42,6 +42,16 @@ recent chat or New chat returns to it with the transcript, draft and running ans
 any screen. Expanding grows the panel and the sidebar in one 240ms move beside the collapsed product nav. The Neo tab's home is the chat
 workspace (greeting, suggested actions, composer). `neo.css` is now the scoped file and the source of truth.
 
+## v4: chat-first automations (9 Oct 2026)
+
+Simplified UI (slim sidebar: New chat, Agents, Activity, Knowledge, Recent, Settings; no header badges; chip suggestions; agents as a list;
+agent detail without the trust/data-source cards). Creating an agent or automation happens in chat: say "Every Monday check GST mismatches"
+or tap "Automate a task". Neo reads what it can from the sentence, asks only for what is missing (what it should do, when it runs, how much it
+does on its own) as tappable choices, shows a draft card, and only creates the agent when you tap Create agent ("Change something" re-asks one
+item). The new agent appears under Agents (kept in sessionStorage, reset with the tab) and "View agent" opens it in place. Posting, deleting
+and GST number changes always need approval. Implemented in `neo-chat.js` (`flowStart` / `advance` / `createFlowAgent`) and
+`NeoWorkspace.addAgent` in `neo/neo.js`.
+
 ## Files added or changed in v2
 
 - `neo/index.html`, `neo/neo.css`, `neo/neo.js` — the workspace. Plain HTML/CSS/JS, hash router, no build step. Sample data and scripted Neo responses live at the top of `neo.js`.
