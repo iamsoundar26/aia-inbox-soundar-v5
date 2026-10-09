@@ -225,17 +225,17 @@ body.nc-host aside[aria-label="Neo"], body.nc-host button[title="Ask Neo (Ctrl J
 
 /* Home look of the empty state in the larger workspace (same as the Neo tab home) */
 .nc .nc-home { display: none; }
-.nc.nc-expanded .nc-empty, .nc.nc-full .nc-empty { max-width: 760px; }
+.nc.nc-expanded .nc-empty, .nc.nc-full .nc-empty { max-width: 880px; }
 .nc.nc-expanded .nc-empty > :not(.nc-home), .nc.nc-full .nc-empty > :not(.nc-home) { display: none; }
 .nc.nc-expanded .nc-home, .nc.nc-full .nc-home { display: block; width: 100%; animation: nc-fade var(--nc-med) var(--nc-ease); }
-.nc .nc-home h2 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -.01em; }
-.nc .nc-home .nc-h2b { font-size: 20px; line-height: 28px; } .nc .nc-home .nc-h2b b { color: var(--nc-accent); font-weight: 600; }
-.nc .nc-home .nc-sub { margin: 6px auto 0; }
-.nc .nc-home .nc-cap { margin: 28px 0 10px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--nc-muted); }
+.nc .nc-home h2 { font-size: 26px; line-height: 34px; font-weight: 700; letter-spacing: -.015em; }
+.nc .nc-home .nc-h2b { font-size: 24px; line-height: 32px; } .nc .nc-home .nc-h2b b { color: var(--nc-accent); font-weight: 700; }
+.nc .nc-home .nc-sub { margin: 10px auto 0; font-size: 14px; line-height: 22px; max-width: 46ch; }
+.nc .nc-home .nc-cap { margin: 32px 0 14px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--nc-muted); }
 .nc .nc-sgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: left; }
-.nc .nc-scard { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--nc-line); background: var(--nc-sunk); border-radius: 12px; padding: 14px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast); }
+.nc .nc-scard { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--nc-line); background: var(--nc-sunk); border-radius: 14px; padding: 16px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast); }
 .nc .nc-scard:hover { border-color: var(--nc-accent); background: var(--nc-tile); }
-.nc .nc-scard b { font-size: 14px; font-weight: 600; } .nc .nc-scard span { font-size: 13px; line-height: 18px; color: var(--nc-muted); }
+.nc .nc-scard b { font-size: 15px; line-height: 22px; font-weight: 600; } .nc .nc-scard span { font-size: 14px; line-height: 22px; color: var(--nc-muted); }
 /* docked sidebar matches the Neo tab sidebar */
 @media (max-width: 1100px) { .nc .nc-sgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
@@ -254,11 +254,7 @@ body.nc-host aside[aria-label="Neo"], body.nc-host button[title="Ask Neo (Ctrl J
 .nc .nc-sbody .main { flex: 1; min-height: 0; }
 .nc.nc-onscreen .nc-chat, .nc.nc-onscreen .nc-work { display: none; }
 
-/* v4 simplified: chips instead of cards, no header badges */
-.nc .nc-sgrid { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 20px; }
-.nc .nc-scard { flex-direction: row; border-radius: 999px; padding: 0 14px; height: 36px; align-items: center; background: var(--nc-bg); border-color: var(--nc-line-strong); font-size: 13px; font-weight: 500; }
-.nc .nc-home h2 { font-size: 26px; line-height: 34px; }
-.nc .nc-home .nc-sub { font-size: 15px; line-height: 22px; margin-top: 4px; }
+/* v4: header badges hidden */
 .nc .nc-ttl span, .nc .nc-beta { display: none; }
 
 .nc .nc-plan .nc-m { color: var(--nc-fg); }

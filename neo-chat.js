@@ -228,9 +228,9 @@
         b.onclick = function () { start(s2[1]); }; st.append(b);
       });
       var h = new Date().getHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-      var home = el('<div class="nc-home"><h2>' + hi + ', Soundar</h2><p class="nc-sub">What would you like Neo to help with?</p><div class="nc-sgrid"></div></div>');
-      [["Review invoices", "Review all invoices uploaded today"], ["Find duplicates", "Find duplicate bills"], ["Reconcile banking", "Reconcile banking"], ["Automate a task", "I want to automate a task"]].forEach(function (c) {
-        var b = el('<button class="nc-scard" type="button">' + c[0] + "</button>"); b.onclick = function () { start(c[1]); }; home.querySelector(".nc-sgrid").append(b);
+      var home = el('<div class="nc-home"><h2>' + hi + ', Soundar <span aria-hidden="true">👋</span></h2><h2 class="nc-h2b">What would you like <b>Neo</b> to help with?</h2><p class="nc-sub">Your AI accounting workspace for Shakunthalam Oil &amp; Refineries</p><p class="nc-cap">Suggested actions</p><div class="nc-sgrid"></div></div>');
+      [["Review invoices", "Find invoices that need your attention"], ["Find duplicates", "Identify possible duplicate bills"], ["Reconcile banking", "Find unmatched transactions"], ["Check GST", "Find GST mismatches and missing information"], ["Review AP", "See pending accounts payable work"], ["Month-end closing", "Check what is still incomplete"]].forEach(function (c) {
+        var b = el('<button class="nc-scard" type="button"><b>' + c[0] + "</b><span>" + c[1] + "</span></button>"); b.onclick = function () { start(c[0]); }; home.querySelector(".nc-sgrid").append(b);
       });
       e.append(home); thread.append(e);
     }
