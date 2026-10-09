@@ -306,13 +306,37 @@
         return '<div class="arow"><a class="ainfo" href="#/agents/' + a.id + '"><span class="ico">' + icon(a.icon) + "</span><span><b>" + esc(a.name) + "</b><small>" + esc(a.short) + '</small></span></a><span class="ast">' + (a.status === "running" ? "Running" : "Ready") + '</span><button class="btn sm" data-run="' + a.id + '">Run</button></div>';
       }).join("") + "</div></div>";
   }
+  var REPEAT = [["arrives", "When a bill arrives"], ["morning", "Daily"], ["monday", "Weekly"], ["monthend", "Monthly"], ["manual", "Manual"]];
+  function agentSub(a) {
+    if (a.paused) return "Paused";
+    var base = { manual: "Runs when you start it", arrives: "Runs as new bills arrive", morning: "Daily · Next run tomorrow", monday: "Weekly · Next run in 3 days", monthend: "Monthly · Next run on 30 Oct" }[a.schedule || "manual"];
+    return base;
+  }
+  function opts(list, cur) { return list.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === cur ? " selected" : "") + ">" + o[1] + "</option>"; }).join(""); }
   function AgentDetail(id) {
     var a = agent(id); if (!a) return Agents();
-    var running = S.runs.filter(function (r) { return r.agent === id && r.status === "running"; })[0];
-    return '<div class="page"><div class="crumb"><a href="#/agents">' + icon("arrowL", "sm") + ' Agents</a></div><div class="page-head"><div><h1>' + esc(a.name) + '</h1><p class="sub">' + esc(a.short) + '</p><div style="margin-top:8px;display:flex;gap:8px;align-items:center">' + (a.status === "running" ? pill("run", "Running") : pill("ok", "Ready")) + '<span style="font-size:12px;color:var(--ink-3)">Runs ' + schedLabel(a.schedule) + '</span></div></div><div class="actions"><a class="btn" href="#/agents/' + id + '/permissions">' + icon("shield", "sm") + 'Permissions</a><button class="btn primary" data-run="' + id + '">' + icon("play", "sm") + "Run now</button></div></div>" +
-      (running ? '<div class="card pad" id="runbox" style="margin-bottom:14px"><div class="section-head" style="margin-bottom:8px"><h2>Current run</h2><a href="#/runs/' + running.id + '">Open run</a></div><p style="color:var(--ink-2);font-size:13px">' + esc(running.desc) + '</p><div class="progress" style="margin:10px 0 6px"><i style="width:' + running.pct + '%"></i></div><p style="font-size:12px;color:var(--ink-2)">' + running.done + " / " + running.total + " · " + running.pct + "%</p></div>" : "") +
-      '<div class="card pad" style="margin-bottom:14px"><div class="section-head"><h2>What it does</h2></div><ul class="list-check">' + a.caps.map(function (c) { return "<li>" + icon("check") + esc(c) + "</li>"; }).join("") + '</ul><p style="font-size:13px;color:var(--ink-2);margin-top:12px">Anything that changes your books waits for your approval. To change what this agent does, ask Neo in chat.</p></div>' +
-      '<div class="card pad"><div class="section-head"><h2>Recent runs</h2><a href="#/runs">All activity</a></div><ul class="runs-mini">' + (a.runs.length ? "" : '<li style="display:block;color:var(--ink-2)">No runs yet.</li>') + a.runs.map(function (r) { return '<li><span class="when">' + esc(r.when) + "</span><span><b>" + r.n + '</b> invoices</span><span class="pills">' + (r.ok ? pill("ok", r.ok + " approved") : "") + (r.exc ? pill("warn", r.exc + " exception" + (r.exc > 1 ? "s" : "")) : r.ok ? "" : pill("run", "In progress")) + "</span></li>"; }).join("") + "</ul></div></div>";
+    var r = a.runs[0], running = S.runs.filter(function (x) { return x.agent === id && x.status === "running"; })[0];
+    var left;
+    if (r) {
+      var unit = a.id === "reconciliation" ? "transactions" : "invoices";
+      left = '<p class="as-when">Latest run · ' + esc(r.when) + '</p><p>I reviewed <b>' + r.n + " " + unit + "</b>. <b>" + r.ok + " are ready</b> and <b>" + r.exc + " need" + (r.exc === 1 ? "s" : "") + " your attention</b>.</p>" +
+        '<ul class="as-list"><li><b>Ready:</b> ' + r.ok + " passed the GST, duplicate and vendor checks.</li><li><b>Needs a check:</b> " + r.exc + " items, such as a missing vendor GST number or a possible duplicate.</li><li><b>Approval:</b> nothing is posted or deleted until you approve it.</li></ul>" +
+        "<p>No other issues met the threshold for an alert.</p>" +
+        '<div class="as-acts" aria-label="Message actions"><button class="ib" data-toast="Copied." aria-label="Copy">' + icon("copy", "sm") + '</button><button class="ib" data-fb="up" aria-label="Good result">' + icon("thumbU", "sm") + '</button><button class="ib" data-fb="down" aria-label="Bad result">' + icon("thumbD", "sm") + '</button><button class="ib" data-run="' + id + '" aria-label="Run again">' + icon("refresh", "sm") + "</button></div>";
+    } else {
+      left = '<div class="as-empty"><h3>No runs yet</h3><p>Run this agent to see its first result here.</p><button class="btn primary" data-run="' + id + '">' + icon("play", "sm") + "Run now</button></div>";
+    }
+    var lastRun = r ? "Today at 12:52 PM" : "Never";
+    return '<div class="agent-split"><section class="as-left"><div class="as-top"><a href="#/agents" class="as-back">' + icon("arrowL", "sm") + " Agents</a></div><div class=\"as-msgs\">" +
+      (running ? '<div class="card pad" style="margin-bottom:14px"><b>Running now</b><div class="progress" style="margin:10px 0 6px"><i style="width:' + running.pct + '%"></i></div><small style="color:var(--ink-2)">' + running.done + " / " + running.total + "</small></div>" : "") + left + '</div>' +
+      '<div class="as-ask"><input type="text" placeholder="Ask about ' + esc(a.name) + '" aria-label="Ask about this agent"><button class="send" data-agent-ask aria-label="Send">' + icon("send") + "</button></div></section>" +
+      '<aside class="as-right" aria-label="Agent settings"><div class="as-head"><div><h2>' + esc(a.name) + "</h2><p>" + esc(agentSub(a)) + '</p></div><button class="ib" data-run="' + id + '" title="Run now" aria-label="Run now">' + icon("play", "sm") + '</button><button class="ib" data-agent-pause="' + id + '" title="' + (a.paused ? "Resume" : "Pause") + '" aria-label="' + (a.paused ? "Resume" : "Pause") + '">' + icon(a.paused ? "play" : "pause", "sm") + '</button><button class="ib" data-go="#/agents" aria-label="Close">' + icon("x", "sm") + "</button></div>" +
+      '<div class="as-body"><h3>Prompt</h3><textarea class="as-prompt" id="asPrompt" aria-label="Prompt">' + esc(a.prompt || a.long) + "</textarea>" +
+      "<h3>Frequency</h3><div class=\"as-group\"><label class=\"as-row\"><span>Repeat</span><select id=\"asRepeat\">" + opts(REPEAT, a.schedule || "manual") + "</select></label>" +
+      '<label class="as-row"><span>Time</span><select id="asTime">' + opts([["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], a.time || "morning") + "</select></label></div>" +
+      '<div class="as-group"><label class="as-row"><span>End repeat</span><select id="asEnd">' + opts([["never", "Never"], ["10", "After 10 runs"], ["date", "On a date"]], a.end || "never") + "</select></label></div>" +
+      '<div class="as-group"><div class="as-row"><span>Last run</span><span class="as-val">' + lastRun + "</span></div></div></div>" +
+      '<div class="as-foot"><button class="as-cancel" data-agent-cancel>Cancel</button><button class="as-save" data-agent-save="' + id + '">Save</button></div></aside></div>';
   }
   function suggestName(goal) {
     var g = goal.toLowerCase(); if (!g.trim()) return "";
@@ -485,6 +509,10 @@
     if (t.closest("[data-pnew]")) { PANEL.chat = null; PANEL.files = []; paintPanel(); return; }
     if (t.closest("[data-pexpand]")) { openPanel(false); return; }
     var pa = t.closest("[data-pask]"); if (pa) { panelAsk(pa.dataset.pask); return; }
+    var sv = t.closest("[data-agent-save]"); if (sv) { var ag = agent(sv.dataset.agentSave), box = t.closest(".agent-split"); ag.prompt = box.querySelector("#asPrompt").value; ag.schedule = box.querySelector("#asRepeat").value; ag.time = box.querySelector("#asTime").value; ag.end = box.querySelector("#asEnd").value; toast("Saved. " + ag.name + " runs " + schedLabel(ag.schedule) + "."); render(); return; }
+    if (t.closest("[data-agent-cancel]")) { go("#/agents"); return; }
+    var pz = t.closest("[data-agent-pause]"); if (pz) { var pa2 = agent(pz.dataset.agentPause); pa2.paused = !pa2.paused; toast(pa2.paused ? pa2.name + " paused." : pa2.name + " resumed."); render(); return; }
+    var aq = t.closest("[data-agent-ask]"); if (aq) { var qi = aq.parentElement.querySelector("input"), qv = qi.value.trim(); if (qv) ask(qv); return; }
     var g = t.closest("[data-go]"); if (g) { go(g.dataset.go); return; }
     var a = t.closest("[data-ask]"); if (a) { ask(a.dataset.ask); return; }
     var ru = t.closest("[data-run]"); if (ru) { runAgent(ru.dataset.run); return; }
@@ -508,6 +536,7 @@
     if (e.key === "Escape") { closeModal(); closeMenus(); }
     if (!E && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") { e.preventDefault(); focusComposer(); }
     var op = e.target.closest && e.target.closest("[data-open]"); if (op && e.key === "Enter") go("#/chat/" + op.dataset.open);
+    if (e.key === "Enter" && e.target.closest && e.target.closest(".as-ask") && e.target.tagName === "INPUT") { e.preventDefault(); var qv2 = e.target.value.trim(); if (qv2) ask(qv2); }
   });
   window.addEventListener("hashchange", function () { if (!E && app) render(); });
   (NeoChat.state().newAgents || []).forEach(function (a) { if (!S.agents.some(function (x) { return x.id === a.id; })) S.agents.push(a); });

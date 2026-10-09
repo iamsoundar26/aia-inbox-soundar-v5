@@ -86,7 +86,7 @@
   function nowLabel() { var d = new Date(), h = d.getHours(), m = d.getMinutes(); return ((h % 12) || 12) + ":" + (m < 10 ? "0" : "") + m + (h < 12 ? " am" : " pm"); }
 
   /* Neo workspace (nav + screens) is the Neo page's own code, loaded lazily so the expanded view and the Neo tab are literally the same UI. */
-  var NEO_V = "17";
+  var NEO_V = "22";
   function loadWS(cb) {
     if (window.NeoWorkspace) return cb();
     if (loadWS.q) { loadWS.q.push(cb); return; }
