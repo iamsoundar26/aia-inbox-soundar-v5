@@ -115,7 +115,7 @@
 .nc .nc-empty { margin: auto; width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding-block: 8px; }
 .nc .nc-empty .nc-mark { width: 40px; height: 40px; border-radius: 12px; margin-bottom: 8px; }
 .nc .nc-empty .nc-mark svg { width: 18px; height: 18px; }
-.nc .nc-empty h2 { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+.nc .nc-empty h2 { font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
 .nc .nc-empty .nc-sub { color: var(--nc-muted); font-size: 13px; line-height: 18px; max-width: 44ch; }
 .nc .nc-starters { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 14px; text-align: left; }
 .nc .nc-starter { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 12px; align-items: center; width: 100%; border: 1px solid var(--nc-line); background: var(--nc-bg); border-radius: 10px; padding: 10px 12px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast), transform var(--nc-fast); }
@@ -144,7 +144,7 @@
 @keyframes nc-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes nc-draw { to { stroke-dashoffset: 0 } }
 .nc .nc-shim { background: linear-gradient(100deg, var(--nc-muted) 35%, var(--nc-fg) 50%, var(--nc-muted) 65%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: nc-sweep 1.6s linear infinite; }
-.nc .nc-think { color: var(--nc-muted); padding-top: 2px; font-size: 14px; }
+.nc .nc-think { color: var(--nc-muted); padding-top: 1px; font-size: 13px; line-height: 18px; }
 .nc .nc-steps { display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 18px; }
 .nc .nc-steps li { display: flex; align-items: center; gap: 8px; color: var(--nc-muted); animation: nc-rise var(--nc-med) var(--nc-ease); }
 .nc .nc-steps .nc-ic { width: 16px; height: 16px; flex: none; display: grid; place-items: center; }
@@ -152,13 +152,13 @@
 .nc .nc-steps li.fail { color: var(--nc-bad); }
 .nc .nc-ring { width: 12px; height: 12px; border: 2px solid var(--nc-line-strong); border-top-color: var(--nc-accent); border-radius: 50%; animation: nc-spin .7s linear infinite; }
 .nc .nc-tick path, .nc .nc-tick-big path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: nc-draw 300ms var(--nc-ease) forwards; }
-.nc .nc-trail summary { cursor: pointer; color: var(--nc-muted); list-style: none; display: flex; align-items: center; gap: 6px; width: fit-content; min-height: 24px; font-size: 13px; line-height: 18px; }
+.nc .nc-trail summary { cursor: pointer; color: var(--nc-muted); list-style: none; display: flex; align-items: center; gap: 6px; width: fit-content; min-height: 24px; font-size: 12px; line-height: 16px; }
 .nc .nc-trail summary::-webkit-details-marker { display: none; }
 .nc .nc-trail summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform var(--nc-fast); }
 .nc .nc-trail[open] summary::after { transform: rotate(-135deg); }
 .nc .nc-trail .nc-steps { margin-top: 6px; }
 .nc .nc-trail .nc-steps li { animation: none; }
-.nc .nc-ans { line-height: 21px; }
+.nc .nc-ans { font-size: 14px; line-height: 20px; }
 .nc .nc-ans .nc-w { animation: nc-fade 200ms linear both; }
 .nc .nc-ans b { font-weight: 600; }
 .nc .nc-skel { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
@@ -223,20 +223,19 @@ body.nc-host aside[aria-label="Neo"], body.nc-host button[title="Ask Neo (Ctrl J
 .nc.nc-expanded .nc-empty, .nc.nc-full .nc-empty { max-width: 880px; }
 .nc.nc-expanded .nc-empty > :not(.nc-home), .nc.nc-full .nc-empty > :not(.nc-home) { display: none; }
 .nc.nc-expanded .nc-home, .nc.nc-full .nc-home { display: block; width: 100%; animation: nc-fade var(--nc-med) var(--nc-ease); }
-.nc .nc-home h2 { font-size: 26px; line-height: 34px; font-weight: 700; letter-spacing: -.015em; }
-.nc .nc-home .nc-h2b { font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -.015em; color: var(--nc-fg); } .nc .nc-home .nc-h2b b { color: var(--nc-accent); font-weight: 700; }
-.nc .nc-home .nc-sub { margin: 10px auto 0; font-size: 14px; line-height: 22px; max-width: 46ch; }
-.nc .nc-home .nc-cap { margin: 32px 0 14px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--nc-muted); }
+.nc .nc-home h2 { font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; }
+.nc .nc-home .nc-h2b { font-size: 18px; line-height: 26px; font-weight: 500; color: var(--nc-fg); } .nc .nc-home .nc-h2b b { color: var(--nc-accent); font-weight: 600; }
+.nc .nc-home .nc-sub { margin: 8px auto 0; font-size: 13px; line-height: 18px; max-width: 46ch; }
+.nc .nc-home .nc-cap { margin: 28px 0 12px; font-size: 11px; line-height: 16px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--nc-muted); }
 .nc .nc-sgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: left; }
 .nc .nc-scard { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--nc-line); background: var(--nc-sunk); border-radius: 14px; padding: 16px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast); }
 .nc .nc-scard:hover { border-color: var(--nc-accent); background: var(--nc-tile); }
-.nc .nc-scard b { font-size: 15px; line-height: 22px; font-weight: 600; } .nc .nc-scard span { font-size: 14px; line-height: 22px; color: var(--nc-muted); }
+.nc .nc-scard b { font-size: 14px; line-height: 20px; font-weight: 600; } .nc .nc-scard span { font-size: 13px; line-height: 18px; color: var(--nc-muted); }
 .nc .nc-homelink { margin-top: 18px; border: 0; background: none; color: var(--nc-accent); font-size: 13px; line-height: 18px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 4px 6px; }
 .nc .nc-homelink:hover { color: var(--nc-accent-hover); }
 @media (max-width: 1100px) { .nc .nc-sgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* larger reading size once the chat has room */
-.nc.nc-full .nc-ans, .nc.nc-expanded .nc-ans, .nc.nc-full .nc-user, .nc.nc-expanded .nc-user { font-size: 15px; line-height: 24px; }
-.nc.nc-full .nc-user, .nc.nc-expanded .nc-user { padding: 8px 14px; }
+/* Reading text stays at the product base (14/20) in every state, like Rovo and Copilot chat. */
 
 /* Neo item in the main nav reads as active while Neo is expanded */
 .nc-neo-full #nav-neo { background: #e2e5fb; color: #3146b0; }
