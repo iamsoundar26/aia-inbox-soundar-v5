@@ -1,4 +1,4 @@
-/* Neo chat — compact Ask Neo design (ported from the Ask Neo prototype artifact, 8 Oct 2026).
+/* Neo chat (v5) — compact Ask Neo design (ported from the Ask Neo prototype artifact, 8 Oct 2026).
    One module, two layouts: .nc-panel (side panel over the app) and .nc-full (docked history | chat | review).
    All classes are prefixed nc- so this can sit beside the app's Tailwind and the workspace stylesheet. */
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
@@ -117,19 +117,6 @@
 .nc .nc-empty .nc-mark svg { width: 18px; height: 18px; }
 .nc .nc-empty h2 { font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
 .nc .nc-empty .nc-sub { color: var(--nc-muted); font-size: 13px; line-height: 18px; max-width: 44ch; }
-.nc .nc-starters { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 14px; text-align: left; }
-.nc .nc-starter { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 12px; align-items: center; width: 100%; border: 1px solid var(--nc-line); background: var(--nc-bg); border-radius: 10px; padding: 10px 12px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast), transform var(--nc-fast); }
-.nc .nc-starter:hover { border-color: var(--nc-accent); background: var(--nc-sunk); }
-.nc .nc-starter:active { transform: scale(.99); }
-.nc .nc-starter .nc-ic { width: 32px; height: 32px; border-radius: 8px; background: var(--nc-tile); color: var(--nc-accent); display: grid; place-items: center; }
-.nc .nc-starter .nc-ic svg { width: 16px; height: 16px; }
-.nc .nc-starter b { display: block; font-weight: 600; font-size: 14px; line-height: 20px; }
-.nc .nc-starter span.nc-d { display: block; color: var(--nc-muted); font-size: 13px; line-height: 18px; }
-.nc .nc-starter.nc-hero { background: var(--nc-accent); border-color: var(--nc-accent); color: #fff; }
-.nc .nc-starter.nc-hero:hover { background: var(--nc-accent-hover); border-color: var(--nc-accent-hover); }
-.nc .nc-starter.nc-hero .nc-ic { background: rgba(255,255,255,.16); color: #fff; }
-.nc .nc-starter.nc-hero span.nc-d { color: #fff; }
-
 .nc .nc-user { align-self: flex-end; max-width: 85%; background: var(--nc-user); border-radius: 12px 12px 4px 12px; padding: 6px 12px; animation: nc-rise var(--nc-med) var(--nc-ease); overflow-wrap: anywhere; }
 .nc .nc-ai { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 10px; animation: nc-rise var(--nc-med) var(--nc-ease); }
 .nc .nc-av { width: 24px; height: 24px; border-radius: 6px; background: var(--nc-accent); color: #fff; display: grid; place-items: center; }
@@ -218,24 +205,71 @@ body.nc-host aside[aria-label="Neo"], body.nc-host button[title="Ask Neo (Ctrl J
 .nc .nc-thread:focus, .nc .nc-hhead h2:focus { outline: none; }
 .nc .nc-thread:focus-visible { outline: 2px solid var(--nc-accent-soft); outline-offset: -2px; border-radius: 0; }
 
-/* Home look of the empty state in the larger workspace (same as the Neo tab home) */
-.nc .nc-home { display: none; }
-.nc.nc-expanded .nc-empty, .nc.nc-full .nc-empty { max-width: 880px; }
-.nc.nc-expanded .nc-empty > :not(.nc-home), .nc.nc-full .nc-empty > :not(.nc-home) { display: none; }
-.nc.nc-expanded .nc-home, .nc.nc-full .nc-home { display: block; width: 100%; animation: nc-fade var(--nc-med) var(--nc-ease); }
-.nc .nc-home h2 { font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; }
-.nc .nc-home .nc-h2b { font-size: 18px; line-height: 26px; font-weight: 500; color: var(--nc-fg); } .nc .nc-home .nc-h2b b { color: var(--nc-accent); font-weight: 600; }
-.nc .nc-home .nc-sub { margin: 8px auto 0; font-size: 13px; line-height: 18px; max-width: 46ch; }
-.nc .nc-home .nc-cap { margin: 28px 0 12px; font-size: 11px; line-height: 16px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--nc-muted); }
-.nc .nc-sgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: left; }
-.nc .nc-scard { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--nc-line); background: var(--nc-sunk); border-radius: 14px; padding: 16px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast); }
+/* ---------- home: greeting, today's briefing, quick actions ---------- */
+.nc .nc-empty { margin: 0; width: 100%; max-width: none; display: flex; flex-direction: column; align-items: stretch; text-align: left; gap: 0; padding-block: 8px 4px; animation: nc-fade var(--nc-med) var(--nc-ease); }
+.nc .nc-empty .nc-hi { font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.01em; }
+.nc .nc-empty .nc-sub { color: var(--nc-muted); font-size: 13px; line-height: 18px; margin-top: 2px; }
+.nc .nc-empty .nc-cap { margin: 20px 0 8px; font-size: 11px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--nc-muted); }
+.nc .nc-brief { display: flex; flex-direction: column; border: 1px solid var(--nc-line); border-radius: 12px; overflow: hidden; background: var(--nc-bg); }
+.nc .nc-brow { display: grid; grid-template-columns: 32px minmax(0,1fr) 16px; gap: 12px; align-items: center; width: 100%; min-height: 56px; padding: 10px 12px; border: 0; border-top: 1px solid var(--nc-line); background: var(--nc-bg); text-align: left; transition: background var(--nc-fast); }
+.nc .nc-brow:first-child { border-top: 0; }
+.nc .nc-brow:hover { background: var(--nc-sunk); }
+.nc .nc-brow:focus-visible { outline-offset: -2px; border-radius: 0; }
+.nc .nc-brow .nc-ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--nc-tile); color: var(--nc-accent); }
+.nc .nc-brow .nc-ic svg { width: 16px; height: 16px; }
+.nc .nc-brow .nc-ic.alert { background: var(--nc-warn-soft); color: var(--nc-warn); }
+.nc .nc-brow .nc-ic.ok { background: var(--nc-ok-soft); color: var(--nc-ok); }
+.nc .nc-brow .nc-bt { min-width: 0; }
+.nc .nc-brow b { display: block; font-weight: 600; font-size: 14px; line-height: 20px; }
+.nc .nc-brow .nc-d { display: block; color: var(--nc-muted); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nc .nc-brow .nc-chev { color: var(--nc-muted); } .nc .nc-brow .nc-chev svg { width: 16px; height: 16px; }
+.nc .nc-brief .nc-none { padding: 12px; margin: 0; }
+.nc .nc-sgrid, .nc .nc-homelink { display: none; }
+.nc .nc-hchips .nc-chip { height: 30px; }
+.nc.nc-expanded .nc-empty, .nc.nc-full .nc-empty { max-width: 720px; margin: auto; padding-block: 24px; }
+.nc.nc-expanded .nc-empty .nc-hi, .nc.nc-full .nc-empty .nc-hi { font-size: 26px; line-height: 34px; font-weight: 700; letter-spacing: -.015em; text-align: center; }
+.nc.nc-expanded .nc-empty > .nc-sub, .nc.nc-full .nc-empty > .nc-sub { font-size: 14px; line-height: 20px; text-align: center; margin-top: 4px; }
+.nc.nc-expanded .nc-empty .nc-cap, .nc.nc-full .nc-empty .nc-cap { margin-top: 28px; }
+.nc.nc-expanded .nc-hchips, .nc.nc-full .nc-hchips { display: none; }
+.nc.nc-expanded .nc-sgrid, .nc.nc-full .nc-sgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: left; }
+.nc .nc-scard { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--nc-line); background: var(--nc-sunk); border-radius: 12px; padding: 14px 16px; text-align: left; transition: border-color var(--nc-fast), background var(--nc-fast); }
 .nc .nc-scard:hover { border-color: var(--nc-accent); background: var(--nc-tile); }
 .nc .nc-scard b { font-size: 14px; line-height: 20px; font-weight: 600; } .nc .nc-scard span { font-size: 13px; line-height: 18px; color: var(--nc-muted); }
-.nc .nc-homelink { margin-top: 18px; border: 0; background: none; color: var(--nc-accent); font-size: 13px; line-height: 18px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 4px 6px; }
+.nc.nc-expanded .nc-homelink, .nc.nc-full .nc-homelink { display: block; margin: 16px auto 0; border: 0; background: none; color: var(--nc-accent); font-size: 13px; line-height: 18px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 4px 6px; }
 .nc .nc-homelink:hover { color: var(--nc-accent-hover); }
-@media (max-width: 1100px) { .nc .nc-sgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-/* larger reading size once the chat has room */
-/* Reading text stays at the product base (14/20) in every state, like Rovo and Copilot chat. */
+@media (max-width: 1100px) { .nc.nc-expanded .nc-sgrid, .nc.nc-full .nc-sgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- live strip, composer context and quick actions ---------- */
+.nc .nc-live { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 6px; }
+.nc .nc-live[hidden] { display: none; }
+.nc.nc-full .nc-live, .nc.nc-expanded .nc-live { padding-inline: max(14px, calc((100% - 680px) / 2)); }
+.nc .nc-livebtn { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid var(--nc-line); background: var(--nc-sunk); color: var(--nc-fg); font-size: 12px; line-height: 16px; font-weight: 500; transition: background var(--nc-fast), border-color var(--nc-fast); }
+.nc .nc-livebtn:hover { background: var(--nc-tile); border-color: var(--nc-accent); }
+.nc .nc-livebtn .nc-ring { width: 10px; height: 10px; }
+.nc .nc-livebtn svg { width: 14px; height: 14px; }
+.nc .nc-livebtn.nc-warn { color: var(--nc-warn); background: var(--nc-warn-soft); border-color: transparent; }
+.nc .nc-livebtn.nc-warn:hover { border-color: var(--nc-warn); }
+.nc .nc-ctx { display: flex; align-items: center; gap: 6px; margin: 0 4px 6px; font-size: 12px; line-height: 16px; color: var(--nc-muted); }
+.nc .nc-ctx[hidden] { display: none; }
+.nc .nc-ctx svg { width: 14px; height: 14px; flex: none; }
+.nc .nc-ctx b { font-weight: 600; color: var(--nc-fg); }
+.nc .nc-composer { position: relative; }
+.nc .nc-sugg { position: absolute; left: 12px; right: 12px; bottom: calc(100% - 4px); display: flex; flex-direction: column; padding: 4px; background: var(--nc-bg); border: 1px solid var(--nc-line); border-radius: 10px; box-shadow: 0 8px 24px rgba(16,24,40,.12); z-index: 6; animation: nc-rise var(--nc-fast) var(--nc-ease); }
+.nc.nc-full .nc-sugg, .nc.nc-expanded .nc-sugg { left: max(14px, calc((100% - 680px) / 2)); right: max(14px, calc((100% - 680px) / 2)); }
+.nc .nc-sugg[hidden] { display: none; }
+.nc .nc-sitem { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: none; text-align: left; font-size: 13px; line-height: 18px; color: var(--nc-fg); }
+.nc .nc-sitem svg { width: 14px; height: 14px; color: var(--nc-muted); flex: none; }
+.nc .nc-sitem:hover, .nc .nc-sitem[aria-selected="true"] { background: var(--nc-tile); color: var(--nc-accent); }
+
+/* ---------- card footers (bulk approve, open in workspace) and document answers ---------- */
+.nc .nc-cfoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border-top: 1px solid var(--nc-line); background: var(--nc-sunk); font-size: 13px; line-height: 18px; }
+.nc .nc-cfoot .nc-m { font-size: 13px; line-height: 18px; flex: 1; min-width: 0; }
+.nc .nc-cfoot .nc-okline { flex: 1; }
+.nc .nc-clink { width: 100%; border: 0; border-top: 1px solid var(--nc-line); color: var(--nc-accent); font-weight: 600; cursor: pointer; transition: background var(--nc-fast); }
+.nc .nc-clink:hover { background: var(--nc-tile); }
+.nc .nc-clink svg { width: 16px; height: 16px; }
+.nc .nc-dfields { grid-template-columns: 112px minmax(0,1fr); }
+.nc .nc-dfields dd { overflow-wrap: anywhere; }
 
 /* Neo item in the main nav reads as active while Neo is expanded */
 .nc-neo-full #nav-neo { background: #e2e5fb; color: #3146b0; }

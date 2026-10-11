@@ -1,4 +1,4 @@
-/* Neo workspace (v4): sidebar + screens (agents, activity, needs attention, knowledge, settings).
+/* Neo workspace (v5): sidebar + screens (agents, activity, needs attention, knowledge, settings).
    Runs standalone on neo/ (hash router inside #app) and embedded inside the expanded floating chat on product
    pages (window.NeoWorkspace.attach). The chat itself is neo-chat.js; this file never renders chat messages.
    All data is prototype data held in memory; agent edits, created agents, completed runs and decisions are kept
@@ -122,12 +122,21 @@
     persist();
   }
   function saveRun(r) { var st = ST(); st.runs = (st.runs || []).filter(function (x) { return x.id !== r.id; }); st.runs.unshift(r); persist(); }
-  function saveResolved() { var st = ST(); st.resolved = S.resolved; persist(); }
+  function saveResolved() { var st = ST(); st.resolved = S.resolved; persist(); notify(); }
   function savePrefs() { var st = ST(); st.prefs = S.prefs; persist(); }
   function agent(id) { return S.agents.filter(function (a) { return a.id === id; })[0]; }
   function run(id) { return S.runs.filter(function (r) { return r.id === id; })[0]; }
   function runningFor(id) { return S.runs.filter(function (r) { return r.agent === id && r.status === "running"; })[0]; }
   function openExc() { return S.exc.filter(function (e) { return !S.resolved[e.id]; }); }
+  /* What the chat shows on its home briefing and live strip. */
+  function summary() {
+    var running = S.runs.filter(function (r) { return r.status === "running"; }).map(function (r) { var a = agent(r.agent), K = KINDS[(a || {}).kind] || KINDS.inv; return { id: r.id, name: a ? a.name : "Agent", pct: r.pct, done: r.done, total: r.total, unit: K.unit }; });
+    var ex = openExc(), kinds = {}; ex.forEach(function (e) { kinds[e.kind] = (kinds[e.kind] || 0) + 1; });
+    var parts = []; if (kinds.costcentre) parts.push(kinds.costcentre + " missing cost centre" + (kinds.costcentre > 1 ? "s" : "")); if (kinds.duplicate) parts.push("a possible duplicate"); if (kinds.gst) parts.push("a GST mismatch"); if (kinds.unusual) parts.push("an unusual amount");
+    var fin = S.runs.filter(function (r) { return r.status !== "running" && r.day !== "Yesterday"; });
+    return { running: running, attention: ex.length, attentionDetail: parts.join(", "), finished: fin.length, finishedDetail: fin.slice(0, 2).map(runName).join(", ") + (fin.length > 2 ? " and " + (fin.length - 2) + " more" : "") };
+  }
+  function notify() { if (window.NeoChat && NeoChat.live) NeoChat.live(summary()); }
 
   /* ---------- schedule helpers ---------- */
   var TIME_H = { morning: 9, afternoon: 14, evening: 18 }, TIME_LBL = { morning: "9:00 AM", afternoon: "2:00 PM", evening: "6:00 PM" };
@@ -331,7 +340,7 @@
       closeModal();
       var nr = { id: "r" + Date.now(), agent: id, status: "running", total: K.total, done: 0, pct: 0, started: timeNow(), timeline: [["ok", "Run started by " + USER, timeNow()], ["run", "Reading " + a.sources[0], ""], ["todo", "Analysing", ""], ["todo", "Preparing results", ""]] };
       S.runs.unshift(nr);
-      refreshRunUI(nr, false);
+      refreshRunUI(nr, false); notify();
       if (route().parts[0] !== "agents" || route().parts[1] !== id) toast(a.name + " started. Watch it under Activity.");
       tickRun(nr, 700);
     };
@@ -353,7 +362,7 @@
         saveAgent(a); saveRun(nr);
         toast(a.name + " finished: " + (nr.total - exc) + " ready, " + exc + " need your review.");
       }
-      refreshRunUI(nr, done);
+      refreshRunUI(nr, done); notify();
     }, every);
   }
   /* Update only what the current screen needs: progress moves in place, and a full re-render happens only when a
@@ -501,7 +510,8 @@
     refreshNav: function () { if (!E) return; if (route().parts[0] === "chat" && NeoChat.active() != null) E.hash = "/chat/" + NeoChat.active(); E.nav.innerHTML = NavHTML(route()); },
     setRoute: function (h) { if (E) { E.hash = h; E.navigated = false; E.nav.innerHTML = NavHTML(route()); } },
     route: function () { return E ? route() : null; },
-    agentKind: function (id) { var a = agent(id); return a ? a.kind : null; }
+    agentKind: function (id) { var a = agent(id); return a ? a.kind : null; },
+    summary: summary
   };
   if (app) render();
 })();

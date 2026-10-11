@@ -1,8 +1,25 @@
-# AI Accountant · Inbox (Soundar) — Neo workspace, version 4
+# AI Accountant · Inbox (Soundar) — Neo workspace, version 5
 
-> **Status: ideation-stage concept, version 4 (started 9 Oct 2026).** Branched from v3 (tag `v3.0`, commit `96c4b59`): the unified Neo experience (floating chat, expanded view and Neo tab share one sidebar, screens and chat instance).
-> Local only so far: no GitHub repo or Pages site yet. Branch `v4`, base path `/aia-inbox-soundar-v4`.
-> v1, v2 and v3 are untouched in their own folders.
+> **Status: ideation-stage concept, version 5 (started 11 Oct 2026).** Branched from v4 (branch `v4`, commit `0958758`), which is the audited chat-first Neo (floating chat, expanded view and Neo tab share one sidebar, screens and chat instance; agents are created inside the conversation).
+> Local only so far: no GitHub repo or Pages site yet. Branch `v5`, base path `/aia-inbox-soundar-v5`.
+> v1 to v4 are untouched in their own folders.
+
+## v5: Neo that knows your day (11 Oct 2026)
+
+Same concept and code base as v4, with the experience reworked around what the accountant is actually doing:
+
+| Change | What the user gets |
+|---|---|
+| **Briefing home** | Opening Neo shows a greeting, "N things need you today" and up to four live rows: bills left in Inbox, decisions waiting (with what kind), agents running (with progress) and runs finished today. Each row is an action. Counts update as you approve, resolve or as runs progress. Quick-action chips sit under the briefing in the panel; the six suggested-action cards stay in the expanded view and on the Neo page. |
+| **Page context** | On a document page the composer shows "Looking at Dell India Pvt Ltd · INV-1182", the briefing leads with "Explain this document", and asking about it ("explain", "what is this", "summarise this bill"…) gets an answer built from that document: extracted fields, Neo's checks and the decision it needs (approve / skip, delete duplicate / keep, ask the vendor, split the file…). 21 inbox documents are covered, mirroring the app's data. The chat is titled after the document. |
+| **Finish the batch** | The "Work the Inbox with me" card has a footer: "0 of 6 decided · 4 ready to approve" and an **Approve 4 ready bills** button. It confirms inline with the total, approves and posts the four, and offers one Undo for the batch. Single approvals from the review panel update the same footer. |
+| **Answers open the work** | Result cards link into the workspace in place: Needs attention, the GST / AP / Month-End agents, the reconciliation run with 12 open lines. On a product page this expands Neo and lands on that screen; on the Neo page it changes the route. |
+| **Live strip** | While a chat is open, a one-line strip above the composer shows the running agent and its progress ("GST Agent · 74%") and "7 need your decision". Both are buttons. It updates in place as runs tick and hides on the home screen, where the briefing already says it. |
+| **Quick actions while typing** | From two characters the composer offers up to three matching actions ("re" → Review invoices, Reconcile banking, Review AP). Up/Down and Enter run one; Enter with nothing chosen sends the text as typed. Escape closes the list without closing Neo. |
+
+Files changed: `neo-chat.js` (document table, briefing, live strip, suggestions, bulk approve, card links, decision elements), `neo-chat.css` (home, strip, suggestions, footers), `neo/neo.js` (`NeoWorkspace.summary()` and a `NeoChat.live()` notification on run progress and decisions). Asset version `?v=30`.
+
+Known limits (on top of v4's): the document context is a static mirror of the app's inbox data, so it does not follow edits made on the page; "Explain this document" on a page without a known document falls back to the generic answer; bulk approve covers the bills in the chat card, not the Inbox list behind it.
 
 ## What v2 adds
 
@@ -69,12 +86,12 @@ The workspace uses relative paths (`../_next/…`, `../images/logo.png`, `../inb
 
 ## Run locally
 
-    cd ..                                  # the folder that contains aia-inbox-soundar-v4
+    cd ..                                  # the folder that contains aia-inbox-soundar-v5
     python3 -m http.server 8000
-    # open http://localhost:8000/aia-inbox-soundar-v4/inbox/   (app, with Neo in the nav)
-    # open http://localhost:8000/aia-inbox-soundar-v4/neo/     (workspace directly)
+    # open http://localhost:8000/aia-inbox-soundar-v5/inbox/   (app, with Neo in the nav)
+    # open http://localhost:8000/aia-inbox-soundar-v5/neo/     (workspace directly)
 
-The build is currently homed at `/aia-inbox-soundar-v4` (see `.basepath`). Use `python3 set-base-path.py <prefix>` to re-home it.
+The build is currently homed at `/aia-inbox-soundar-v5` (see `.basepath`). Use `python3 set-base-path.py <prefix>` to re-home it.
 
 ## Prototype interactions that work
 

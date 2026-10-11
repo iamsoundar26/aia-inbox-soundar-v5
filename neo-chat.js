@@ -1,4 +1,4 @@
-/* Neo chat (v4). One module, two presentations: the floating side panel on product pages (which can expand in
+/* Neo chat (v5). One module, two presentations: the floating side panel on product pages (which can expand in
    place into the full Neo workspace) and the full view on the Neo page. Every conversation is stored as a
    transcript in sessionStorage ("neoChat"), so reopening a chat shows exactly what was said, and a half-finished
    automation setup can be resumed. Neo's answers are scripted prototype data keyed by topic (SC below). */
@@ -22,8 +22,12 @@
   var IC = {
     inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1Z"/></svg>',
     alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg>',
-    dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+    dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>',
+    run: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>'
   };
+  var CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
 
   /* ---------- prototype data: bills Neo can open in the review panel ---------- */
   var BILLS = {
@@ -39,12 +43,12 @@
     inbox: { match: /inbox|bill|read|review|invoice|attached/i, q: "Work the Inbox with me",
       steps: ["Reading 6 new documents in Inbox", "Extracting vendor, date and amounts", "Checking GST numbers and matching vendors", "Looking for duplicates"],
       text: "I read **6 new bills**. **4 are ready** to approve, **1 needs a check** because the vendor GST number is missing, and **1 looks like a duplicate**. Select a bill to review the extracted details.",
-      card: { title: "New bills", aside: "6 in Inbox", rows: [["Sharma Traders", "Bill SH/2291 · 3 Oct", "₹48,200", "sharma"], ["Patel Logistics", "Bill PL-0877 · 3 Oct", "₹1,12,500", "patel"], ["Lotus Packaging", "Bill LP/554 · 2 Oct", "₹42,400", "lotus"], ["Anand Textiles", "Bill AT-3310 · 1 Oct", "₹86,500", "anand"], ["Meera Stationers", "Bill MS/19 · 1 Oct", "₹6,840", "meera"], ["Sharma Traders", "Bill SH/2291 · 3 Oct", "₹48,200", "sharmaDup"]] },
+      card: { title: "New bills", aside: "6 in Inbox", bulk: true, rows: [["Sharma Traders", "Bill SH/2291 · 3 Oct", "₹48,200", "sharma"], ["Patel Logistics", "Bill PL-0877 · 3 Oct", "₹1,12,500", "patel"], ["Lotus Packaging", "Bill LP/554 · 2 Oct", "₹42,400", "lotus"], ["Anand Textiles", "Bill AT-3310 · 1 Oct", "₹86,500", "anand"], ["Meera Stationers", "Bill MS/19 · 1 Oct", "₹6,840", "meera"], ["Sharma Traders", "Bill SH/2291 · 3 Oct", "₹48,200", "sharmaDup"]] },
       follow: ["What needs my attention?", "Find duplicates"] },
     attention: { match: /attention|waiting|blocked/i, q: "What needs my attention?",
       steps: ["Checking documents waiting for review", "Finding blocked documents", "Comparing for duplicates"],
       text: "**9 items** need you: **5 are waiting** for your review, **3 are blocked** by missing vendor details, and **1 is a possible duplicate**.",
-      card: { title: "Needs attention", aside: "9 items", rows: [["Waiting for review", "5 documents · oldest 4 days", "5", ["Waiting", "info"]], ["Blocked: no vendor GST number", "Meera Stationers and 2 others", "3", ["Blocked", "warn"]], ["Possible duplicate", "Sharma Traders · SH/2291", "1", ["Check", "bad"]]] },
+      card: { title: "Needs attention", aside: "9 items", link: ["Resolve them in Needs attention", "/attention"], rows: [["Waiting for review", "5 documents · oldest 4 days", "5", ["Waiting", "info"]], ["Blocked: no vendor GST number", "Meera Stationers and 2 others", "3", ["Blocked", "warn"]], ["Possible duplicate", "Sharma Traders · SH/2291", "1", ["Check", "bad"]]] },
       follow: ["Work the Inbox with me", "Find duplicates"] },
     dups: { match: /duplicate/i, q: "Find duplicates",
       steps: ["Comparing vendor, bill number and amount", "Matching dates and file contents"],
@@ -54,22 +58,22 @@
     gst: { match: /gst|gstr|\bitc\b/i, q: "Check GST",
       steps: ["Comparing the purchase register with GSTR-2B", "Validating vendor GST numbers", "Checking input credit eligibility"],
       text: "**186 transactions** checked for September. **179 match** GSTR-2B, **6 have amount mismatches** and **1 vendor GST number** differs from your vendor record.",
-      card: { title: "GST check · September", aside: "7 issues", rows: [["Amount mismatch", "6 purchase bills differ from GSTR-2B by ₹12 to ₹480", "6", ["Check", "warn"]], ["GSTIN differs from vendor record", "Zoho Corporation", "1", ["Blocked", "warn"]]] },
+      card: { title: "GST check · September", aside: "7 issues", link: ["Open the GST Agent", "/agents/gst"], rows: [["Amount mismatch", "6 purchase bills differ from GSTR-2B by ₹12 to ₹480", "6", ["Check", "warn"]], ["GSTIN differs from vendor record", "Zoho Corporation", "1", ["Blocked", "warn"]]] },
       follow: ["What needs my attention?", "Work the Inbox with me"] },
     bank: { match: /reconcil|bank|statement|unmatched/i, q: "Reconcile banking",
       steps: ["Importing the latest bank statement", "Matching transactions to vouchers", "Explaining the ones that did not match"],
       text: "**142 bank transactions** reviewed. **130 matched** your books automatically and **12 need a decision**, mostly bank charges and partial payments.",
-      card: { title: "Bank reconciliation · HDFC current account", aside: "12 open", rows: [["Bank charges", "5 lines · no voucher · ₹240 to ₹1,180", "5", ["Suggest entry", "info"]], ["Partial payments", "4 receipts smaller than the invoice", "4", ["Match and split", "warn"]], ["Unknown payee", "3 debits with no matching bill", "3", ["Check", "bad"]]] },
+      card: { title: "Bank reconciliation · HDFC current account", aside: "12 open", link: ["Decide the 12 open lines", "/runs/r3"], rows: [["Bank charges", "5 lines · no voucher · ₹240 to ₹1,180", "5", ["Suggest entry", "info"]], ["Partial payments", "4 receipts smaller than the invoice", "4", ["Match and split", "warn"]], ["Unknown payee", "3 debits with no matching bill", "3", ["Check", "bad"]]] },
       follow: ["What needs my attention?", "Check GST"] },
     month: { match: /month.?end|clos(e|ing)/i, q: "Month-end closing",
       steps: ["Checking unposted documents", "Checking unreconciled bank lines", "Checking pending GST returns"],
       text: "**9 of 12 close checks** pass for September. **3 are still open**: 12 unreconciled bank lines, 5 unposted invoices and an ITC reversal for 2 vendors.",
-      card: { title: "September close", aside: "3 open", rows: [["Unreconciled bank lines", "12 lines · Reconciliation Agent can clear 9", "12", ["Open", "warn"]], ["Unposted invoices", "5 invoices waiting for your approval", "5", ["Open", "warn"]], ["ITC reversal", "Zoho Corporation and Nova Logistics", "2", ["Needs approval", "info"]]] },
+      card: { title: "September close", aside: "3 open", link: ["Open the Month-End Agent", "/agents/month-end"], rows: [["Unreconciled bank lines", "12 lines · Reconciliation Agent can clear 9", "12", ["Open", "warn"]], ["Unposted invoices", "5 invoices waiting for your approval", "5", ["Open", "warn"]], ["ITC reversal", "Zoho Corporation and Nova Logistics", "2", ["Needs approval", "info"]]] },
       follow: ["Reconcile banking", "What needs my attention?"] },
     ap: { match: /\bap\b|payable|payment|due/i, q: "Review AP",
       steps: ["Listing bills due in the next 7 days", "Checking approvals", "Grouping by vendor"],
       text: "**31 bills** worth **₹14,82,300** are due this week. **29 are approved** and grouped into a payment batch. **2 are waiting** for approval from Priya R.",
-      card: { title: "Accounts payable · this week", aside: "31 bills", rows: [["Approved and batched", "29 bills · 11 vendors", "₹13,96,800", ["Ready", "ok"]], ["Waiting for approval", "Pulse Media · Orion Tech", "₹85,500", ["Waiting", "info"]]] },
+      card: { title: "Accounts payable · this week", aside: "31 bills", link: ["Open the AP Agent", "/agents/ap"], rows: [["Approved and batched", "29 bills · 11 vendors", "₹13,96,800", ["Ready", "ok"]], ["Waiting for approval", "Pulse Media · Orion Tech", "₹85,500", ["Waiting", "info"]]] },
       follow: ["Month-end closing", "What needs my attention?"] },
     generic: { match: /.*/, q: "",
       steps: ["Looking through your books"],
@@ -80,6 +84,97 @@
   var KIND2SC = { inv: "inbox", ap: "ap", bank: "bank", gst: "gst", month: "month", dups: "dups" };
   var HOME = [["Review invoices", "Find invoices that need your attention", "inbox"], ["Find duplicates", "Identify possible duplicate bills", "dups"], ["Reconcile banking", "Find unmatched transactions", "bank"], ["Check GST", "Find GST mismatches and missing information", "gst"], ["Review AP", "See pending accounts payable work", "ap"], ["Month-end closing", "Check what is still incomplete", "month"]];
   var EXACT = {}; Object.keys(SC).forEach(function (k) { if (SC[k].q) EXACT[SC[k].q] = k; }); HOME.forEach(function (h) { EXACT[h[0]] = h[2]; });
+  EXACT["Explain this document"] = "doc"; EXACT["Automate a task"] = "auto";
+
+  /* ---------- page context: the document the user has open (prototype data mirrored from the app's inbox) ---------- */
+  var DOCS = {
+    "INB-2041": { v: "Dell India Pvt Ltd", f: "Dell India Pvt Ltd · INV-1182.pdf", no: "INV-1182", amt: "₹76,450", due: "11 Jun 2026", cc: "Engineering", type: "Purchase", st: "ready", lines: ["i7 Workstation, 32GB RAM, 1TB SSD (x2) · Fixed Assets - Hardware · ₹64,790", "Onsite warranty extension, 24 months · Repairs & Maintenance · ₹11,660"] },
+    "INB-2042": { v: "Amazon Web Services India", f: "AWS-services-may-2026.pdf", no: "AWS-INV-MAY26-0042", amt: "₹2,18,904", due: "6 Jun 2026", type: "Purchase", st: "flag", flags: ["Vendor is not in your vendor master yet", "Cost centre is missing", "Invoice number could not be confirmed"], lines: ["Compute (EC2) · Cloud Services · ₹1,42,300", "Storage (S3, EBS) · Cloud Services · ₹38,450", "Data transfer and misc · Cloud Services · ₹24,960"] },
+    "INB-2043": { v: "HDFC Bank", f: "HDFC-50100123456-Apr2026.pdf", type: "Bank statement", st: "bank", amt: "47 transactions", note: "47 transactions from 1 Apr to 30 Apr 2026, opening ₹4,82,310 and closing ₹6,12,482" },
+    "INB-2044": { v: "Theta Hotels Pvt Ltd", f: "Theta-Hotels — INV-2214.pdf", no: "INV-2214", amt: "₹4,86,832", due: "11 Jun 2026", type: "Sales", st: "ready", lines: ["Furnace oil, 12 KL · Sales — Petroleum Products · ₹4,10,400", "Delivery and handling · Sales — Freight Recovered · ₹2,200"] },
+    "INB-2045": { v: "Nandini Foods LLP", f: "Nandini-Foods — INV-2215.pdf", no: "INV-2215", amt: "₹1,54,816", due: "13 Jun 2026", type: "Sales", st: "flag", flags: ["Customer is not in your customer master yet"], lines: ["Refined sunflower oil, 400 cases · Sales — Edible Oils · ₹1,31,200"] },
+    "INB-2046": { v: "Depreciation entry, Q1", f: "Depreciation-adjustment-Q1.pdf", amt: "₹1,84,500", type: "Journal", st: "ready", lines: ["Dr Depreciation — Hardware · ₹1,84,500", "Cr Accumulated Depreciation — Hw · ₹1,84,500"], note: "Quarterly straight-line depreciation on the hardware pool." },
+    "INB-2047": { v: "Petty cash reconciliation", f: "Petty-cash-recon-Apr.pdf", amt: "₹18,420", type: "Mixed", st: "ambig", note: "Page 1 has 4 small vendor receipts (fuel, courier, stationery, snacks). Page 2 is a typed adjustment table that balances the petty-cash float." },
+    "INB-2048": { v: "Acme Corp Pvt Ltd", f: "Acme-Corp — May-bill.pdf", type: "Purchase", st: "extracting" },
+    "INB-2049": { v: "Kappa Technologies", f: "Vendor-Quote-Scan.pdf", type: "Purchase", st: "failed", note: "It is a phone-camera scan: I could read some text but not the line items, GST or total." },
+    "INB-2050": { v: "Iota Solutions", f: "Iota-Solutions-Apr.pdf", type: "Purchase", st: "failed", note: "The PDF is password-protected, so I could not open it." },
+    "INB-2051": { v: "Dell India Pvt Ltd", f: "Dell India Pvt Ltd · INV-1182 (1).pdf", no: "INV-1182", amt: "₹76,425", type: "Purchase", st: "dup", note: "Same vendor, invoice number and amount as the copy already in Inbox." },
+    "INB-2052": { v: "Sigma Packaging Co", f: "Sigma-Pkg-Mar26.pdf", no: "SIG/26/0421", amt: "₹42,100", due: "21 Apr 2026", cc: "Operations", type: "Purchase", st: "dupsoft", note: "It looks like an older bill uploaded again: the due date has passed and the amount matches a bill you already posted." },
+    "INB-2053": { v: "Lambda Innovations", f: "Lambda-Innov-Apr.pdf", type: "Purchase", st: "extracting", note: "Extraction is on its second of three tries." },
+    "INB-2030": { v: "Zeta Services LLP", f: "Zeta-Services-Apr.pdf", amt: "₹12,600", type: "Purchase", st: "done", note: "Posted as PUR/25-26/030 by Soundar R on 8 Sep." },
+    "INB-2031": { v: "Theta Hotels Pvt Ltd", f: "Theta-Hotels — INV-2208.pdf", no: "INV-2208", amt: "₹2,98,628", type: "Sales", st: "done", note: "Posted as SAL/25-26/0208 by Soundar R on 6 Sep." },
+    "INB-2020": { v: "Wrong attachment", f: "Wrong-attachment.pdf", type: "", st: "deleted", note: "Deleted by Soundar R on 7 Sep. Nothing was posted." },
+    "CONV-001": { v: "Pegasus Logistics Pvt Ltd", f: "Pegasus-Logistics — INV-7702.pdf", no: "PL-7702", amt: "₹88,500", due: "10 Jun 2026", cc: "Operations", type: "Purchase", st: "ready", note: "This looks like a cost you re-charge to a customer, so you can convert it to a sales invoice after posting." },
+    "CONV-002": { v: "Re-bill to Rentyx Stores", f: "Rebill-Rentyx-Mar.pdf", amt: "₹41,200", type: "Journal", st: "ready", note: "Warehouse rent paid on behalf of Rentyx Stores Pvt Ltd for March 2026; it should also be raised as a sales invoice on Rentyx." },
+    "CONV-003": { v: "Internal adjustment", f: "Adjustment-rebill-Mar.pdf", amt: "₹41,200", type: "Purchase", st: "dup", note: "The same ₹41,200 was already posted as journal voucher JV/25-26/074 on 12 May." },
+    "CONV-004": { v: "Theta Hotels Pvt Ltd", f: "Theta-Hotels — INV-2208 (re-send).pdf", no: "INV-2208", amt: "₹2,98,628", type: "Sales", st: "dup", note: "INV-2208 is already posted as SAL/25-26/0208; this is the customer's re-send." },
+    "CONV-005": { v: "Crescent Foods Pvt Ltd", f: "Crescent-Foods — INV-5510.pdf", no: "CF-5510", amt: "₹33,420", due: "11 Jun 2026", cc: "Pantry", type: "Purchase", st: "ready", note: "A similar Crescent Foods bill was posted last month, but the invoice number differs, so this is not a duplicate." }
+  };
+  function pageCtx() {
+    var m = location.pathname.match(/\/inbox\/([A-Z]+-\d+)\/?(index\.html)?$/);
+    if (m && DOCS[m[1]]) return { kind: "doc", id: m[1], doc: DOCS[m[1]] };
+    return null;
+  }
+  var CTX = pageCtx();
+  var DOC_RE = /explain|summar|what('s| is) (this|it)|this (document|bill|invoice|file|statement|entry)|read (this|it)\b/i;
+  /* Neo's answer about the open document, built from DOCS so it replays identically from a saved chat. */
+  function docScript(id) {
+    var d = DOCS[id]; if (!d) return SC.generic;
+    var who = d.type === "Sales" ? "Customer" : "Vendor", name = "**" + d.v + "**" + (d.no ? " · " + d.no : ""), amt = d.amt && d.st !== "bank" ? " for **" + d.amt + "**" : "";
+    var s = { steps: ["Reading " + d.f], follow: ["What needs my attention?", "Work the Inbox with me"], fields: [], checks: [], decide: null };
+    if (d.type) s.fields.push(["Type", d.type]); if (d.no) s.fields.push(["Invoice number", d.no]); if (d.amt && d.st !== "bank") s.fields.push(["Amount", d.amt]); if (d.due) s.fields.push(["Due date", d.due]); if (d.cc) s.fields.push(["Cost centre", d.cc]);
+    (d.lines || []).forEach(function (l, i) { s.fields.push(["Line " + (i + 1), l]); });
+    var key = "doc:" + id;
+    switch (d.st) {
+      case "ready":
+        s.steps.push(d.type === "Journal" ? "Checking that debits equal credits" : "Checking the " + who.toLowerCase() + " and GST", "Comparing with earlier documents");
+        s.text = name + amt + (d.due ? ", due " + d.due : "") + ". " + (d.type === "Journal" ? "The entry balances and both ledgers exist." : who + " matched, GST is correct and there is no duplicate.") + (d.note ? " " + d.note : "") + " It is **ready to post**.";
+        s.checks = d.type === "Journal" ? [["ok", "Debits equal credits"], ["ok", "Both ledgers exist in your chart of accounts"]] : [["ok", who + " matched to an existing record"], ["ok", "GST rate matches the items"], ["ok", "No duplicate found"]];
+        s.decide = { key: key, btns: [["Approve and post", "approved", "nc-pri"], ["Skip for now", "skipped", ""]], msgs: { approved: "Approved and posted.", skipped: "Skipped. It stays in Inbox." } };
+        break;
+      case "flag":
+        s.steps.push("Checking the " + who.toLowerCase() + " and GST", "Listing what is missing");
+        s.text = name + amt + " needs **" + d.flags.length + " thing" + (d.flags.length > 1 ? "s" : "") + " fixed** before it can post. I have not changed anything.";
+        s.checks = d.flags.map(function (f) { return ["warn", f]; });
+        s.decide = { key: key, btns: [["Ask the " + who.toLowerCase() + " for details", "queried", "nc-pri"], ["Skip for now", "skipped", ""]], msgs: { queried: "Request sent. I'll flag this document when a reply comes in.", skipped: "Skipped. It stays in Inbox." } };
+        break;
+      case "dup": case "dupsoft":
+        s.steps.push("Comparing vendor, number and amount with your books");
+        s.text = name + amt + " looks like a **" + (d.st === "dup" ? "duplicate" : "possible duplicate") + "**. " + d.note + " Nothing is deleted until you decide.";
+        s.checks = [[d.st === "dup" ? "bad" : "warn", d.note]];
+        s.decide = { key: key, btns: [[d.st === "dup" ? "Delete duplicate" : "Mark as duplicate", "deleted", "nc-danger"], ["Keep it", "kept", ""]], msgs: { deleted: "Marked as duplicate and removed from Inbox.", kept: "Kept. It stays in Inbox for review." } };
+        break;
+      case "bank":
+        s.steps.push("Counting transactions and checking the balances");
+        s.text = "**" + d.v + " statement**: " + d.note + ". I can match all 47 transactions to your vouchers and show you only the ones that need a decision.";
+        s.fields = [["Period", "1 Apr to 30 Apr 2026"], ["Transactions", "47"], ["Opening balance", "₹4,82,310"], ["Closing balance", "₹6,12,482"]];
+        s.follow = ["Reconcile banking", "What needs my attention?"];
+        break;
+      case "ambig":
+        s.steps.push("Looking at both pages");
+        s.text = "**" + d.f + "** holds two kinds of content. " + d.note + " Tell me how you want it handled.";
+        s.decide = { key: key, btns: [["Split into 4 receipts and a journal entry", "split", "nc-pri"], ["Treat it as one journal entry", "jv", ""]], msgs: { split: "Split into 4 vendor receipts and 1 journal entry. Each is in Inbox for review.", jv: "Treated as one journal entry. It is in Inbox for review." } };
+        break;
+      case "extracting":
+        s.text = "I'm still reading **" + d.f + "**." + (d.note ? " " + d.note : "") + " It usually takes under a minute, and the details will be here when you come back.";
+        break;
+      case "failed":
+        s.steps.push("Trying to extract the text");
+        s.text = "I couldn't read **" + d.f + "** from " + d.v + ". " + d.note + " Nothing was changed.";
+        s.decide = { key: key, btns: [["Ask the vendor for a clean copy", "queried", "nc-pri"], ["Skip for now", "skipped", ""]], msgs: { queried: "Request sent to " + d.v + ".", skipped: "Skipped. It stays in Inbox." } };
+        break;
+      case "done":
+        s.text = name + amt + " is **already posted**. " + d.note;
+        break;
+      default:
+        s.text = "**" + d.f + "** was **deleted**. " + d.note;
+    }
+    return s;
+  }
+  /* Quick actions offered while typing in the composer. */
+  var ALIAS = { "Reconcile banking": "bank statement unmatched transactions", "Check GST": "gstr itc mismatch tax", "Review AP": "payable payments due vendors pay", "Month-end closing": "close checklist period", "Find duplicates": "duplicate bills copies", "Review invoices": "invoice bills new", "Work the Inbox with me": "inbox bills read clear", "What needs my attention?": "attention waiting blocked exceptions pending", "Automate a task": "agent schedule every workflow automation remind daily weekly", "Explain this document": "explain document file summarise summarize what is this" };
+  function quickList() { var q = HOME.map(function (c) { return c[0]; }); q.push("Work the Inbox with me", "What needs my attention?", "Automate a task"); if (CTX) q.unshift("Explain this document"); return q; }
+  function inr(n) { var t = String(n), last = t.slice(-3), rest = t.slice(0, -3); return "₹" + (rest ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," : "") + last; }
   var SEED = [
     { id: 1, title: "Work the Inbox with me", group: "Today", when: "9:12 am", key: "inbox" },
     { id: 2, title: "Missing GST on Meera Stationers", group: "Today", when: "8:40 am", key: "attention" },
@@ -129,7 +224,7 @@
   function titleOf(text) { return text.length > 34 ? text.slice(0, 32) + "…" : text; }
 
   /* The Neo workspace (sidebar + screens) is the Neo page's own code, loaded on demand on product pages. */
-  var NEO_V = "26";
+  var NEO_V = "30";
   function loadWS(cb) {
     if (window.NeoWorkspace) return cb(null);
     if (loadWS.failed) return cb(loadWS.failed);
@@ -150,9 +245,10 @@
   function whenNav(fn, tries) { if (navBtn() && navAside()) return fn(); if ((tries || 0) < 40) setTimeout(function () { whenNav(fn, (tries || 0) + 1); }, 100); }
 
   /* ---------- instance ---------- */
+  var INSTANCES = [];
   function mount(container, opts) {
     opts = opts || {};
-    var mode = opts.mode || "panel", inst = {};
+    var mode = opts.mode || "panel", inst = {}; INSTANCES.push(inst);
     var mq = window.matchMedia("(min-width: 861px)");
     var root = container; root.className = "nc " + (mode === "full" ? "nc-full" : "nc-panel");
     root.innerHTML =
@@ -162,13 +258,16 @@
       '<button class="nc-ibtn" type="button" data-histbtn aria-label="Chat history" aria-expanded="false">' + HISTI + '</button><button class="nc-ibtn" type="button" data-new aria-label="New chat" title="New chat">' + PEN + '</button>' +
       '<button class="nc-ibtn" type="button" data-expand aria-label="' + (mode === "full" ? "Minimize to floating chat" : "Expand Neo") + '" title="' + (mode === "full" ? "Minimize" : "Expand") + '">' + (mode === "full" ? COLLAPSE : EXPAND) + '</button><button class="nc-ibtn" type="button" data-close aria-label="Close Neo" title="Close">' + X + "</button></header>" +
       '<div class="nc-thread" data-thread role="region" aria-label="Conversation with Neo" tabindex="0"></div>' +
-      '<form class="nc-composer" data-form><div class="nc-box"><div class="nc-fchips" data-fchips></div><input type="file" class="nc-sr" data-file tabindex="-1" aria-hidden="true" accept=".pdf,.jpg,.jpeg,.png" multiple><button class="nc-ibtn nc-sm32" type="button" data-attach aria-label="Attach a bill or document" title="Attach">' + PLUS + '</button><label class="nc-sr" for="nc-in-' + mode + '">Message Neo</label><textarea id="nc-in-' + mode + '" rows="1" placeholder="Ask Neo anything"></textarea><button class="nc-send" type="submit" data-send aria-label="Send" disabled>' + ARROW + '</button></div><p class="nc-hint">Neo can make mistakes. Review extracted details before approving.</p></form></div>' +
+      '<div class="nc-live" data-live role="status" hidden></div>' +
+      '<form class="nc-composer" data-form><p class="nc-ctx" data-ctx hidden></p><div class="nc-sugg" data-sugg role="listbox" aria-label="Quick actions" hidden></div><div class="nc-box"><div class="nc-fchips" data-fchips></div><input type="file" class="nc-sr" data-file tabindex="-1" aria-hidden="true" accept=".pdf,.jpg,.jpeg,.png" multiple><button class="nc-ibtn nc-sm32" type="button" data-attach aria-label="Attach a bill or document" title="Attach">' + PLUS + '</button><label class="nc-sr" for="nc-in-' + mode + '">Message Neo</label><textarea id="nc-in-' + mode + '" rows="1" placeholder="Ask Neo anything" aria-autocomplete="list" aria-controls="nc-sugg-' + mode + '" aria-expanded="false"></textarea><button class="nc-send" type="submit" data-send aria-label="Send" disabled>' + ARROW + '</button></div><p class="nc-hint">Neo can make mistakes. Review extracted details before approving.</p></form></div>' +
       '<div class="nc-screen" hidden><div class="nc-shead"><button class="nc-ibtn" type="button" data-sexpand aria-label="Minimize to floating chat" title="Minimize">' + COLLAPSE + '</button><button class="nc-ibtn" type="button" data-sclose aria-label="Close Neo" title="Close">' + X + '</button></div><div class="nc-sbody neo-scope" data-sbody></div></div>' +
       '<aside class="nc-work" aria-label="Review bill" hidden><div class="nc-hhead"><h2 data-wt tabindex="-1">Review bill</h2><button class="nc-ibtn" type="button" data-wclose aria-label="Close review panel">' + X + '</button></div><div class="nc-wbody" data-wbody></div><div class="nc-wfoot" data-wfoot></div></aside>' +
       '<div class="nc-sr" role="status" aria-live="polite" data-status></div>';
     var $ = function (s) { return root.querySelector(s); };
     var thread = $("[data-thread]"), input = $("textarea"), send = $("[data-send]"), form = $("[data-form]"), hist = $(".nc-hist"), histList = $("[data-hlist]"), statusEl = $("[data-status]"), histBtn = $("[data-histbtn]"), search = $(".nc-hsearch input"), fileIn = $("[data-file]"), fchips = $("[data-fchips]"), work = $(".nc-work"), wbody = $("[data-wbody]"), wfoot = $("[data-wfoot]"), ttl = $("[data-ttl]"), expBtn = $("[data-expand]"), screenEl = $(".nc-screen");
     var histOpen = false, workOpen = false, workKey = null, workTrigger = null, running = false, runId = 0, cur = null, t0 = 0, files = [];
+    var liveEl = $("[data-live]"), sugg = $("[data-sugg]"), sIdx = -1, live = null; sugg.id = "nc-sugg-" + mode;
+    if (CTX && mode !== "full") { var cx = $("[data-ctx]"); cx.innerHTML = IC.doc + "<span>Looking at <b>" + esc(CTX.doc.v + (CTX.doc.no ? " · " + CTX.doc.no : "")) + "</b></span>"; cx.hidden = false; input.placeholder = "Ask about this document, or anything else"; }
     var side = opts.sidebar !== false, expanded = false, expT = 0, flow = null, navRO = null, wsAttached = false;
 
     function sleep(ms, id) { return new Promise(function (res, rej) { setTimeout(function () { id === runId ? res() : rej("cancel"); }, ms); }); }
@@ -183,8 +282,8 @@
     function record(msg) { var a = activeItem(); if (!a) return; a.msgs = a.msgs || []; a.msgs.push(msg); save(); }
     function persistFlow() { var a = activeItem(); if (!a) return; a.flow = flow ? { slots: Object.assign({}, flow.slots), stage: flow.stage } : null; save(); }
     function ensureItem(text) {
-      var first = thread.querySelector(".nc-empty"); if (first) first.remove();
-      if (ST.active == null) { var h = { id: ++ST.uid, title: titleOf(text), group: "Today", when: nowLabel(), msgs: [] }; ST.hs.unshift(h); ST.active = h.id; save(); renderHist(); setTitle(); }
+      var first = thread.querySelector(".nc-empty"); if (first) { first.remove(); drawLive(); }
+      if (ST.active == null) { var h = { id: ++ST.uid, title: text === "Explain this document" && CTX ? CTX.doc.v + (CTX.doc.no ? " · " + CTX.doc.no : "") : titleOf(text), group: "Today", when: nowLabel(), msgs: [] }; ST.hs.unshift(h); ST.active = h.id; save(); renderHist(); setTitle(); }
     }
 
     /* history */
@@ -207,7 +306,7 @@
 
     /* review panel */
     function tagFor(key, fallback) { var st = ST.billState[key]; if (st === "approved") return ["Approved", "ok"]; if (st === "skipped") return ["Skipped", "info"]; if (st === "deleted") return ["Deleted", "info"]; if (st === "kept") return ["Kept", "info"]; return BILLS[key] ? BILLS[key].tag : fallback; }
-    function refreshTags(key) { var t = tagFor(key); root.querySelectorAll('[data-bill="' + key + '"] .nc-tag').forEach(function (n) { n.className = "nc-tag " + t[1]; n.textContent = t[0]; }); }
+    function refreshTags(key) { var t = tagFor(key); root.querySelectorAll('[data-bill="' + key + '"] .nc-tag').forEach(function (n) { n.className = "nc-tag " + t[1]; n.textContent = t[0]; }); root.querySelectorAll("[data-bulk]").forEach(function (b) { if (b._draw) b._draw(); }); if (thread.querySelector("[data-brief]")) drawBrief(); }
     function openWork(key, trigger) { workKey = key; workTrigger = trigger || null; workOpen = true; histOpen = false; renderWork(); syncLayout(); $("[data-wt]").focus(); say("Review panel opened for " + BILLS[key].v + ", bill " + BILLS[key].no); }
     function closeWork() { workOpen = false; syncLayout(); if (workTrigger && document.body.contains(workTrigger)) workTrigger.focus(); }
     function renderWork() {
@@ -256,7 +355,51 @@
         else { row = el('<div class="nc-row"' + style + ">" + inner + "</div>"); if (d[4]) row.append(rowActions(d)); }
         card.append(row);
       });
+      if (c.bulk) card.append(bulkEl(c));
+      if (c.link) { var lk = el('<button class="nc-cfoot nc-clink" type="button"><span>' + esc(c.link[0]) + "</span>" + CHEV + "</button>"); lk.onclick = function () { openScreen(c.link[1]); }; card.append(lk); }
       return card;
+    }
+    /* Approve every "ready" bill in a card at once: confirm inline, then one Undo for the batch. */
+    function bulkEl(c) {
+      var box = el('<div class="nc-cfoot" data-bulk></div>'), last = null;
+      var keys = c.rows.map(function (d) { return d[3]; }).filter(function (k) { return BILLS[k]; });
+      function ready() { return keys.filter(function (k) { return BILLS[k].kind === "ready" && !ST.billState[k]; }); }
+      function sum(ks) { return inr(ks.reduce(function (n, k) { return n + parseInt(BILLS[k].tot.replace(/[^\d]/g, ""), 10); }, 0)); }
+      function draw() {
+        var r = ready(), n = keys.filter(function (k) { return ST.billState[k]; }).length; box.innerHTML = "";
+        if (last && last.every(function (k) { return ST.billState[k] === "approved"; })) {
+          box.append(el('<span class="nc-okline">' + TICK.replace('class="nc-tick"', 'class="nc-tick-big"') + last.length + " bill" + (last.length > 1 ? "s" : "") + " approved and posted.</span>"));
+          var u = el('<button class="nc-link" type="button">Undo</button>'); u.onclick = function () { var ks = last; last = null; ks.forEach(function (k) { ST.billState[k] = null; }); save(); ks.forEach(refreshTags); say("Undone. " + ks.length + " bills are back in Inbox."); u.blur(); }; box.append(u); return;
+        }
+        last = null;
+        box.append(el('<span class="nc-m">' + (n === keys.length ? "All " + keys.length + " bills decided." : n + " of " + keys.length + " decided" + (r.length ? " · " + r.length + " ready to approve" : "")) + "</span>"));
+        if (r.length) { var b = el('<button class="nc-btn nc-sm nc-pri" type="button">Approve ' + r.length + " ready bill" + (r.length > 1 ? "s" : "") + "</button>"); b.onclick = function () { confirmAll(r); }; box.append(b); }
+      }
+      function confirmAll(r) {
+        box.innerHTML = ""; box.append(el('<span class="nc-m">Approve and post <b>' + r.length + " bills</b> totalling <b>" + sum(r) + "</b>? The other " + (keys.length - r.length) + " stay in Inbox.</span>"));
+        var ok = el('<button class="nc-btn nc-sm nc-pri" type="button">Approve ' + r.length + "</button>"), no = el('<button class="nc-btn nc-sm" type="button">Cancel</button>');
+        ok.onclick = function () { r.forEach(function (k) { ST.billState[k] = "approved"; }); save(); last = r; r.forEach(refreshTags); say(r.length + " bills approved and posted."); };
+        no.onclick = function () { draw(); }; box.append(ok, no); ok.focus();
+      }
+      box._draw = draw; draw(); return box;
+    }
+    function fieldsEl(rows) { var dl = el('<dl class="nc-fields nc-dfields"></dl>'); rows.forEach(function (r) { dl.append(el("<dt>" + esc(r[0]) + "</dt>"), el("<dd>" + esc(r[1]) + "</dd>")); }); return dl; }
+    function checksEl(list) { var ul = el('<ul class="nc-checks"></ul>'); list.forEach(function (c) { ul.append(el('<li><span class="nc-ic ' + c[0] + '">' + (c[0] === "ok" ? TICK.replace('class="nc-tick"', "") : c[0] === "warn" ? WARN : CROSS) + "</span><span>" + esc(c[1]) + "</span></li>")); }); return ul; }
+    /* A decision Neo asks for in the thread (approve, skip, delete...). The choice is kept in billState so a saved chat shows it. */
+    function decideEl(sp) {
+      var box = el('<div class="nc-btns" data-decide></div>');
+      function draw() {
+        box.innerHTML = ""; var st = ST.billState[sp.key];
+        if (st) { box.append(el('<span class="nc-okline">' + TICK.replace('class="nc-tick"', 'class="nc-tick-big"') + esc(sp.msgs[st]) + "</span>")); var u = el('<button class="nc-link" type="button">Undo</button>'); u.onclick = function () { ST.billState[sp.key] = null; save(); draw(); say("Undone"); }; box.append(u); return; }
+        sp.btns.forEach(function (b) { var btn = el('<button class="nc-btn nc-sm ' + b[2] + '" type="button">' + esc(b[0]) + "</button>"); btn.onclick = function () { ST.billState[sp.key] = b[1]; save(); draw(); say(sp.msgs[b[1]]); }; box.append(btn); });
+      }
+      draw(); return box;
+    }
+    function answerExtras(body, sc, animate) {
+      if (sc.card) body.append(cardEl(sc.card, animate));
+      if (sc.fields && sc.fields.length) body.append(fieldsEl(sc.fields));
+      if (sc.checks && sc.checks.length) body.append(checksEl(sc.checks));
+      if (sc.decide) body.append(decideEl(sc.decide));
     }
     function rowActions(d) {
       var box = el('<div class="nc-ra"></div>');
@@ -306,11 +449,13 @@
       if (st === "confirm") return planBtns();
       return null;
     }
-    function openAgent(id) {
-      if (opts.inPlace) { if (!expanded) inst.setExpanded(true); loadWS(function (err) { if (err) say("The Neo workspace could not load."); else NeoWorkspace.navigate("/agents/" + id); }); }
-      else if (window.NeoWorkspace) location.hash = "#/agents/" + id;
-      else location.href = BASE + "/neo/#/agents/" + id;
+    /* Open a workspace screen from the chat: in place on product pages, by hash on the Neo page. */
+    function openScreen(h) {
+      if (opts.inPlace) { if (!expanded) inst.setExpanded(true); loadWS(function (err) { if (err) say("The Neo workspace could not load."); else NeoWorkspace.navigate(h); }); }
+      else if (window.NeoWorkspace) location.hash = "#" + h;
+      else location.href = BASE + "/neo/#" + h;
     }
+    function openAgent(id) { openScreen("/agents/" + id); }
 
     /* replay a saved transcript */
     function renderSaved(item) {
@@ -319,7 +464,7 @@
       msgs.forEach(function (m, i) {
         if (m.u) { thread.append(userEl(m.u)); lastUser = m.u; return; }
         var a = m.a, ai = aiEl(); lastBody = ai.body; lastAnswer = null; lastCreated = null;
-        if (a.k === "answer") { var sc = SC[a.key] || SC.generic; ai.body.append(trailEl(sc.steps, a.secs)); ai.body.append(el('<p class="nc-ans">' + rich(sc.text) + "</p>")); if (sc.card) ai.body.append(cardEl(sc.card, false)); lastAnswer = sc; }
+        if (a.k === "answer") { var sc = a.key === "doc" ? docScript(a.doc) : (SC[a.key] || SC.generic); ai.body.append(trailEl(sc.steps, a.secs)); ai.body.append(el('<p class="nc-ans">' + rich(sc.text) + "</p>")); answerExtras(ai.body, sc, false); lastAnswer = sc; }
         else if (a.k === "say") ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>"));
         else if (a.k === "plan") { ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>"), planEl(a.name, a.rows)); }
         else if (a.k === "created") { ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>")); lastCreated = a.id; }
@@ -330,24 +475,52 @@
       if (flow && lastBody) { var c = stageChips(); if (c) lastBody.append(c); }
       else if (lastCreated != null && lastBody) lastBody.append(createdBtns(lastCreated));
       else if (lastAnswer && lastBody) lastBody.append(followChips(lastAnswer));
-      if (!msgs.length) showEmpty(); else thread.scrollTop = thread.scrollHeight;
+      if (!msgs.length) showEmpty(); else { thread.scrollTop = thread.scrollHeight; drawLive(); }
+    }
+    /* Home: a briefing built from live prototype state (bills left, decisions waiting, agents running), then quick actions. */
+    function briefRows() {
+      var rows = [];
+      if (CTX) rows.push({ ic: "doc", t: "Explain this document", d: CTX.doc.v + (CTX.doc.amt ? " · " + CTX.doc.amt : "") + (CTX.doc.no ? " · " + CTX.doc.no : ""), info: true, go: function () { start("Explain this document"); } });
+      var keys = Object.keys(BILLS).filter(function (k) { return ST.billState[k]; }).length, left = Object.keys(BILLS).length - keys;
+      if (left > 0) rows.push({ ic: "inbox", t: left + " new bill" + (left > 1 ? "s" : "") + " in Inbox", d: keys ? keys + " decided, " + left + " to go" : "4 ready to approve, 2 need a check", go: function () { start("Work the Inbox with me"); } });
+      var w = live || (window.NeoWorkspace ? NeoWorkspace.summary() : null);
+      if (w) {
+        if (w.attention) rows.push({ ic: "alert", t: w.attention + " decision" + (w.attention > 1 ? "s" : "") + " waiting", d: w.attentionDetail, go: function () { openScreen("/attention"); } });
+        w.running.forEach(function (r) { rows.push({ ic: "run", t: r.name + " is running", d: r.done + " of " + r.total + " " + r.unit + " · " + r.pct + "%", info: true, go: function () { openScreen("/runs/" + r.id); } }); });
+        if (w.finished) rows.push({ ic: "ok", t: w.finished + " agent run" + (w.finished > 1 ? "s" : "") + " finished today", d: w.finishedDetail, info: true, go: function () { openScreen("/runs?tab=completed"); } });
+      }
+      return rows.slice(0, 4);
+    }
+    function drawBrief() {
+      var host = thread.querySelector("[data-brief]"), sum = thread.querySelector("[data-sum]"); if (!host) return;
+      var rows = briefRows(), fi = -1; Array.prototype.forEach.call(host.children, function (c, i) { if (c === document.activeElement) fi = i; });
+      host.innerHTML = "";
+      rows.forEach(function (r) { var b = el('<button class="nc-brow" type="button"><span class="nc-ic ' + r.ic + '">' + IC[r.ic] + '</span><span class="nc-bt"><b>' + esc(r.t) + '</b><span class="nc-d">' + esc(r.d) + '</span></span><span class="nc-chev" aria-hidden="true">' + CHEV + "</span></button>"); b.onclick = r.go; host.append(b); });
+      if (!rows.length) host.append(el('<p class="nc-sub nc-none">Nothing is waiting on you.</p>'));
+      if (fi > -1 && host.children[fi]) host.children[fi].focus();
+      var n = rows.filter(function (r) { return !r.info; }).length;
+      sum.textContent = n ? n + " thing" + (n > 1 ? "s" : "") + " need" + (n > 1 ? "" : "s") + " you today." : "You're all caught up.";
     }
     function showEmpty() {
       thread.innerHTML = "";
-      var e = el('<div class="nc-empty"><span class="nc-mark" aria-hidden="true">' + STAR + "</span><h2>6 bills are waiting. Let's clear them.</h2><p class=\"nc-sub\">Neo prepares the work. You approve before anything posts.</p><div class=\"nc-starters\"></div></div>");
-      var st = e.querySelector(".nc-starters");
-      var hero = el('<button class="nc-starter nc-hero" type="button"><span class="nc-ic">' + IC.inbox + '</span><span><b>Work the Inbox with me</b><span class="nc-d">Read, check and prepare all 6 new bills</span></span></button>');
-      hero.onclick = function () { start("Work the Inbox with me"); }; st.append(hero);
-      [["alert", "What needs my attention?", "9 items waiting, blocked or duplicated"], ["dup", "Find duplicates", "2 certain matches ready to clear"]].forEach(function (s2) {
-        var b = el('<button class="nc-starter" type="button"><span class="nc-ic">' + IC[s2[0]] + "</span><span><b>" + s2[1] + '</b><span class="nc-d">' + s2[2] + "</span></span></button>");
-        b.onclick = function () { start(s2[1]); }; st.append(b);
-      });
       var h = new Date().getHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-      var home = el('<div class="nc-home"><h2>' + hi + ', Soundar <span aria-hidden="true">👋</span></h2><p class="nc-h2b">What would you like <b>Neo</b> to help with?</p><p class="nc-sub">Your AI accounting workspace for Shakunthalam Oil &amp; Refineries</p><p class="nc-cap" id="nc-cap-' + mode + '">Suggested actions</p><div class="nc-sgrid" role="group" aria-labelledby="nc-cap-' + mode + '"></div><button class="nc-homelink" type="button">Or ask Neo to automate a task</button></div>');
-      HOME.forEach(function (c) { var b = el('<button class="nc-scard" type="button"><b>' + c[0] + "</b><span>" + c[1] + "</span></button>"); b.onclick = function () { start(c[0]); }; home.querySelector(".nc-sgrid").append(b); });
-      home.querySelector(".nc-homelink").onclick = function () { start("I want to automate a task"); };
-      e.append(home); thread.append(e);
+      var e = el('<div class="nc-empty"><h2 class="nc-hi">' + hi + ', Soundar <span aria-hidden="true">👋</span></h2><p class="nc-sub" data-sum></p><p class="nc-cap" id="nc-capt-' + mode + '">Today</p><div class="nc-brief" data-brief role="group" aria-labelledby="nc-capt-' + mode + '"></div><p class="nc-cap" id="nc-cap-' + mode + '">Ask Neo to</p><div class="nc-chips nc-hchips" role="group" aria-labelledby="nc-cap-' + mode + '"></div><div class="nc-sgrid" role="group" aria-labelledby="nc-cap-' + mode + '"></div><button class="nc-homelink" type="button">Or ask Neo to automate a task</button></div>');
+      HOME.forEach(function (c) { var b = el('<button class="nc-scard" type="button"><b>' + c[0] + "</b><span>" + c[1] + "</span></button>"); b.onclick = function () { start(c[0]); }; e.querySelector(".nc-sgrid").append(b); });
+      HOME.filter(function (c) { return c[2] !== "inbox"; }).map(function (c) { return c[0]; }).concat(["Automate a task"]).forEach(function (t) { var b = el('<button class="nc-chip" type="button">' + esc(t) + "</button>"); b.onclick = function () { start(t); }; e.querySelector(".nc-hchips").append(b); });
+      e.querySelector(".nc-homelink").onclick = function () { start("Automate a task"); };
+      thread.append(e); drawBrief(); drawLive();
+      if (!window.NeoWorkspace) loadWS(function (err) { if (!err && thread.querySelector("[data-brief]")) drawBrief(); });
     }
+    /* Live strip above the composer: what agents are doing and what waits on you, while a chat is open. */
+    function drawLive() {
+      var w = live || (window.NeoWorkspace ? NeoWorkspace.summary() : null), onHome = !!thread.querySelector(".nc-empty");
+      liveEl.innerHTML = "";
+      if (!w || onHome || (!w.running.length && !w.attention)) { liveEl.hidden = true; return; }
+      if (w.running.length) { var r = w.running[0], b = el('<button class="nc-livebtn" type="button"><span class="nc-ring" aria-hidden="true"></span><span>' + esc(w.running.length > 1 ? w.running.length + " agents running" : r.name + " · " + r.pct + "%") + "</span></button>"); b.onclick = function () { openScreen(w.running.length > 1 ? "/runs?tab=running" : "/runs/" + r.id); }; liveEl.append(b); }
+      if (w.attention) { var a = el('<button class="nc-livebtn nc-warn" type="button">' + WARN + "<span>" + w.attention + " need your decision</span></button>"); a.onclick = function () { openScreen("/attention"); }; liveEl.append(a); }
+      liveEl.hidden = false;
+    }
+    inst.refreshLive = function (w) { if (w) live = w; drawLive(); drawBrief(); };
     function newChat() { stop(); flow = null; ST.active = null; save(); showEmpty(); renderHist(); setTitle(); workOpen = false; if (!docked()) histOpen = false; syncLayout(); input.focus(); }
 
     /* ---------- live answers ---------- */
@@ -383,9 +556,11 @@
       if (running) stop();
       var exact = EXACT[text];
       if (!o.resume && flow && !exact) return flowReply(text);
-      if (!o.resume && AUTO_RE.test(text) && !exact) return flowStart(text);
+      if (!o.resume && (exact === "auto" || (AUTO_RE.test(text) && !exact))) return flowStart(text);
       if (flow) { flow = null; persistFlow(); }
-      var key = o.key || (o.kind && SC[o.kind] ? o.kind : null) || exact || pick(text), sc = SC[key], id = ++runId, failed = false;
+      var key = o.key || (o.kind && SC[o.kind] ? o.kind : null) || exact || (CTX && DOC_RE.test(text) ? "doc" : null) || pick(text);
+      if (key === "doc" && !CTX) key = "generic";
+      var docId = key === "doc" ? CTX.id : null, sc = key === "doc" ? docScript(docId) : SC[key], id = ++runId, failed = false;
       ensureItem(text);
       if (!o.resume) { thread.append(userEl(text)); record({ u: text }); }
       var badFile = !o.resume && o.files ? o.files.filter(function (f) { return /\.(jpe?g|png)$/i.test(f); })[0] : null;
@@ -418,10 +593,10 @@
         var p = el('<p class="nc-ans" aria-hidden="true"></p>'); ai.body.append(p);
         await stream(p, sc.text, id, 22);
         p.removeAttribute("aria-hidden"); say(plain(sc.text));
-        if (sc.card) { await sleep(200, id); ai.body.append(cardEl(sc.card, true)); down(); await sleep(sc.card.rows.length * 40 + 300, id); }
+        if (sc.card || (sc.fields && sc.fields.length) || sc.decide) { await sleep(200, id); answerExtras(ai.body, sc, true); down(); await sleep((sc.card ? sc.card.rows.length * 40 : 0) + 300, id); }
         ai.body.append(followChips(sc)); down();
         ai.root.classList.remove("nc-working"); ai.root.removeAttribute("aria-busy");
-        record({ a: { k: "answer", key: key, secs: secs } }); cur.pending = false; setRunning(false);
+        record({ a: { k: "answer", key: key, doc: docId, secs: secs } }); cur.pending = false; setRunning(false);
       } catch (e) { if (e !== "cancel") throw e; }
     }
     /* A short Neo message (used by the automation flow). `after` may append chips/cards; `store` is what the transcript keeps. */
@@ -507,11 +682,26 @@
     form.addEventListener("submit", function (e) {
       e.preventDefault(); var v = input.value.trim(); if (running || (!v && !files.length)) return;
       var t = v || "Please read the attached file" + (files.length > 1 ? "s" : ""); if (files.length) t += " (attached: " + files.join(", ") + ")";
-      var sent = files.slice(); input.value = ""; input.style.height = "32px"; files = []; renderFiles(); start(t, { files: sent });
+      var sent = files.slice(); input.value = ""; input.style.height = "32px"; files = []; renderFiles(); drawSugg(); start(t, { files: sent });
     });
     send.addEventListener("click", function () { if (running) stop(); });
-    input.addEventListener("input", function () { input.style.height = "32px"; input.style.height = Math.min(input.scrollHeight, 104) + "px"; if (!running) send.disabled = !input.value.trim() && !files.length; });
-    input.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+    input.addEventListener("input", function () { input.style.height = "32px"; input.style.height = Math.min(input.scrollHeight, 104) + "px"; if (!running) send.disabled = !input.value.trim() && !files.length; drawSugg(); });
+    /* Quick actions while typing: Up/Down to choose, Enter to run it; Enter with nothing chosen sends the text as typed. */
+    function drawSugg() {
+      var v = input.value.trim().toLowerCase(), toks = v.split(/\s+/).filter(Boolean); sugg.innerHTML = ""; sIdx = -1; input.removeAttribute("aria-activedescendant");
+      var hits = v.length < 2 || running ? [] : quickList().filter(function (l) { var words = (l + " " + (ALIAS[l] || "")).toLowerCase().split(/[^a-z?-]+/); return toks.every(function (t) { return words.some(function (w) { return w.indexOf(t) === 0; }); }); }).slice(0, 3);
+      hits.forEach(function (l, i) { var b = el('<button class="nc-sitem" type="button" role="option" id="' + sugg.id + "-" + i + '" aria-selected="false" data-q="' + esc(l) + '">' + SEARCH + "<span>" + esc(l) + "</span></button>"); b.onmousedown = function (e) { e.preventDefault(); }; b.onclick = function () { pickSugg(l); }; sugg.append(b); });
+      sugg.hidden = !hits.length; input.setAttribute("aria-expanded", String(!!hits.length));
+    }
+    function pickSugg(l) { input.value = ""; input.style.height = "32px"; drawSugg(); start(l); }
+    function moveSugg(d) { var items = sugg.querySelectorAll(".nc-sitem"); if (!items.length) return; sIdx = (sIdx + d + items.length) % items.length; items.forEach(function (it, i) { it.setAttribute("aria-selected", String(i === sIdx)); }); input.setAttribute("aria-activedescendant", items[sIdx].id); }
+    input.addEventListener("blur", function () { setTimeout(function () { if (document.activeElement !== input) { sugg.hidden = true; input.setAttribute("aria-expanded", "false"); } }, 120); });
+    input.addEventListener("keydown", function (e) {
+      var open = !sugg.hidden;
+      if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) { e.preventDefault(); moveSugg(e.key === "ArrowDown" ? 1 : -1); return; }
+      if (open && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sugg.hidden = true; sIdx = -1; input.setAttribute("aria-expanded", "false"); return; }
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (open && sIdx > -1) { pickSugg(sugg.querySelectorAll(".nc-sitem")[sIdx].dataset.q); return; } form.requestSubmit(); }
+    });
     root.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
       if (workOpen) { closeWork(); e.stopPropagation(); return; }
@@ -624,6 +814,7 @@
     window.NeoChat.panel = inst;
   }
 
-  window.NeoChat = { save: save, mount: mount, history: function () { return ST.hs; }, active: function () { return ST.active; }, setActive: function (id) { ST.active = id; save(); }, state: function () { return ST; } };
+  window.NeoChat = { save: save, mount: mount, history: function () { return ST.hs; }, active: function () { return ST.active; }, setActive: function (id) { ST.active = id; save(); }, state: function () { return ST; },
+    live: function (w) { INSTANCES.forEach(function (i) { if (i.refreshLive) i.refreshLive(w); }); }, context: function () { return CTX; } };
   if (!document.getElementById("app")) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", hostPanel); else hostPanel(); }
 })();
