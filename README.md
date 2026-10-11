@@ -17,7 +17,23 @@ Same concept and code base as v4, with the experience reworked around what the a
 | **Live strip** | While a chat is open, a one-line strip above the composer shows the running agent and its progress ("GST Agent · 74%") and "7 need your decision". Both are buttons. It updates in place as runs tick and hides on the home screen, where the briefing already says it. |
 | **Quick actions while typing** | From two characters the composer offers up to three matching actions ("re" → Review invoices, Reconcile banking, Review AP). Up/Down and Enter run one; Enter with nothing chosen sends the text as typed. Escape closes the list without closing Neo. |
 
-Files changed: `neo-chat.js` (document table, briefing, live strip, suggestions, bulk approve, card links, decision elements), `neo-chat.css` (home, strip, suggestions, footers), `neo/neo.js` (`NeoWorkspace.summary()` and a `NeoChat.live()` notification on run progress and decisions). Asset version `?v=30`.
+## v5 tools and skills (11 Oct 2026, second pass)
+
+Neo now works through named **tools** and **skills**, and every step in an answer shows which one it used (a small badge, "Used 4 tools · 4.5s").
+
+| Tool / skill | Kind | What happens in chat |
+|---|---|---|
+| **Create Invoice** | write | "Create an invoice for Theta Hotels, 12 KL furnace oil" → Neo reads the policy, looks up the customer and item with Search Masters, finds the last number with Search Vouchers, and shows a **draft** (customer, item line, subtotal, GST, total). "Create invoice" runs the tool visibly and settles with the voucher number; "Discard" drops it. A customer that is not in the masters is created first. |
+| **Create Master** | write | "Create a vendor ledger for Blue Ocean Freight under Sundry Creditors" → draft with name, type, group, GSTIN (pending when the policy requires one) and opening balance; confirm to create. An existing name ("create a ledger for Dell India Pvt Ltd") is reported instead of duplicated. Items and groups work the same way. |
+| **Search Masters** | read | "Find the ledger for Nova", "list customers" → a result card with type, group and GSTIN. |
+| **Search Vouchers** | read | "Search vouchers for Theta", "show payments to Amazon" → posted vouchers with type, date and amount. |
+| **Excel Reader** | read | Attach a `.xlsx`/`.csv` (or say "3-way reconciliation" and pick the sample) → the sheets are read for the skill below. |
+| **3-way reconciliation** (skill) | | Matches PO → GRN → invoice lines, applies the policy tolerance, and reports matched / quantity differs / price differs / no GRN with a decision: post the matched bills or hold everything. |
+| **Accounting policy** (skill) | | Plain-language rules on the Knowledge page (editable, with reset). Neo reads the relevant rule as a visible step before invoices, new masters and the 3-way match, so a changed rule shows up in the next answer. |
+
+The Knowledge page also lists the tools with Read / Write badges (write tools always show a draft first). Drafts and decisions are kept in the transcript, so a saved chat replays with its created or discarded state.
+
+Files changed: `neo-chat.js` (document table, briefing, live strip, suggestions, bulk approve, card links, decision elements), `neo-chat.css` (home, strip, suggestions, footers), `neo/neo.js` (`NeoWorkspace.summary()` and a `NeoChat.live()` notification on run progress and decisions). Asset version `?v=31`.
 
 Known limits (on top of v4's): the document context is a static mirror of the app's inbox data, so it does not follow edits made on the page; "Explain this document" on a page without a known document falls back to the generic answer; bulk approve covers the bills in the chat card, not the Inbox list behind it.
 

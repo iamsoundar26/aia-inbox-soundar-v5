@@ -416,8 +416,14 @@
   }
 
   /* ---------- knowledge / settings ---------- */
+  var TOOLS = [["Create Invoice", "write", "Raises a sales invoice from a draft you confirm in chat."], ["Create Master", "write", "Creates ledgers, groups and items; new parties are checked against the policy."], ["Search Masters", "read", "Finds ledgers, groups and items by name, group or GSTIN."], ["Search Vouchers", "read", "Finds posted vouchers by number, party, type or date."], ["Excel Reader", "read", "Reads PO, GRN and invoice sheets for the 3-way reconciliation."]];
   function Knowledge() {
-    return '<div class="page wide"><div class="page-head"><div><h1>Knowledge</h1><p class="sub">What Neo can read when it works on your books.</p></div><div class="actions"><button class="btn" type="button" data-toast="Sources are up to date (synced 4 minutes ago).">' + icon("refresh", "sm") + 'Refresh connections</button></div></div><div class="know-grid">' + Object.keys(KNOW).map(function (g) { return '<div class="card pad know"><div class="section-head"><h2>' + g + "</h2></div><ul>" + KNOW[g].map(function (k) { return "<li><span><b>" + k[0] + '</b><br><span class="meta">' + esc(k[1]) + "</span></span>" + (k[2] === "ok" ? pill("ok", "Connected") : pill("neutral", "Not connected")) + "</li>"; }).join("") + "</ul></div>"; }).join("") + "</div></div>";
+    var pol = window.NeoChat ? NeoChat.policy() : "";
+    return '<div class="page wide"><div class="page-head"><div><h1>Knowledge</h1><p class="sub">What Neo can read, the tools it can use and the rules it follows for ' + esc(COMPANY) + '.</p></div><div class="actions"><button class="btn" type="button" data-toast="Sources are up to date (synced 4 minutes ago).">' + icon("refresh", "sm") + 'Refresh connections</button></div></div><div class="know-grid">' + Object.keys(KNOW).map(function (g) { return '<div class="card pad know"><div class="section-head"><h2>' + g + "</h2></div><ul>" + KNOW[g].map(function (k) { return "<li><span><b>" + k[0] + '</b><br><span class="meta">' + esc(k[1]) + "</span></span>" + (k[2] === "ok" ? pill("ok", "Connected") : pill("neutral", "Not connected")) + "</li>"; }).join("") + "</ul></div>"; }).join("") + "</div>" +
+      '<div class="know-grid" style="margin-top:12px"><div class="card pad know"><div class="section-head"><h2>Skills</h2><p>How Neo works, in plain language</p></div>' +
+      '<form data-policy><label class="overline" for="kPolicy">Accounting policy</label><p class="meta" style="margin:2px 0 8px;color:var(--ink-2);font-size:13px;line-height:18px">Neo reads this before every answer that touches your books. Edit it like a note.</p><textarea id="kPolicy" class="as-prompt" style="min-height:188px;margin-bottom:10px">' + esc(pol) + '</textarea><div class="btn-row"><button class="btn primary sm" type="submit" disabled>Save policy</button><button class="btn sm" type="button" data-policy-reset>Reset to default</button></div></form>' +
+      '<ul style="margin-top:16px"><li><span><b>3-way reconciliation</b><br><span class="meta">Matches PO, GRN and invoice lines from the purchase register; applies the policy tolerance; holds invoices without a GRN.</span></span><button class="btn sm" type="button" data-go="#/chat/new?q=' + encodeURIComponent("Run the 3-way reconciliation") + '">Run in chat</button></li></ul></div>' +
+      '<div class="card pad know"><div class="section-head"><h2>Tools</h2><p>What Neo can call. Write tools always show a draft first.</p></div><ul>' + TOOLS.map(function (t) { return "<li><span><b>" + t[0] + '</b><br><span class="meta">' + esc(t[2]) + "</span></span>" + (t[1] === "write" ? pill("warn", "Write · confirm first") : pill("ok", "Read")) + "</li>"; }).join("") + "</ul></div></div></div>";
   }
   function Settings() {
     return '<div class="page"><div class="page-head"><div><h1>Settings</h1><p class="sub">How Neo works for you.</p></div></div><div class="card pad settings-list">' +
@@ -447,6 +453,13 @@
   function bind(r) {
     var mc = document.getElementById("modCollapse"); if (mc) mc.onclick = function () { document.body.classList.toggle("mod-collapsed"); };
     var mb = document.getElementById("menuBtn"); if (mb) mb.onclick = function () { var n = document.getElementById("neonav"); if (n) n.classList.toggle("open"); };
+    var pf = document.querySelector("[data-policy]");
+    if (pf) {
+      var ps = pf.querySelector("button[type=submit]"), ta = pf.querySelector("textarea");
+      ta.addEventListener("input", function () { ps.disabled = false; });
+      pf.onsubmit = function (e) { e.preventDefault(); NeoChat.policy(ta.value.trim() || NeoChat.policyDefault); ps.disabled = true; toast("Accounting policy saved. Neo uses it from the next answer."); };
+      pf.querySelector("[data-policy-reset]").onclick = function () { ta.value = NeoChat.policyDefault; NeoChat.policy(NeoChat.policyDefault); ps.disabled = true; toast("Policy reset to the default."); };
+    }
     var se = document.getElementById("setExplain"); if (se) se.onchange = function (e) { S.prefs.explain = e.target.checked; savePrefs(); toast(S.prefs.explain ? "Neo will explain every suggestion." : "Explanations hidden. You can still open “Why?” on any suggestion."); };
     var af = document.querySelector("[data-agent-form]");
     if (af) {

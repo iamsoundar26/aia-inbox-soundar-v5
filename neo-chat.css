@@ -269,6 +269,11 @@ body.nc-host aside[aria-label="Neo"], body.nc-host button[title="Ask Neo (Ctrl J
 .nc .nc-clink:hover { background: var(--nc-tile); }
 .nc .nc-clink svg { width: 16px; height: 16px; }
 .nc .nc-dfields { grid-template-columns: 112px minmax(0,1fr); }
+.nc .nc-tool { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; margin-right: 6px; border-radius: 4px; background: var(--nc-accent-soft); color: var(--nc-accent); font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; flex: none; }
+.nc .nc-steps li .nc-tool + span { min-width: 0; }
+.nc .nc-card h3 .nc-tool { margin: 0; }
+.nc .nc-plan .nc-cfoot .nc-steps { width: 100%; }
+.nc .nc-cfoot .nc-link { height: 24px; }
 .nc .nc-dfields dd { overflow-wrap: anywhere; }
 
 /* Neo item in the main nav reads as active while Neo is expanded */

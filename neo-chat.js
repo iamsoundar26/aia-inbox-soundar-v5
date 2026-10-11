@@ -75,16 +75,82 @@
       text: "**31 bills** worth **₹14,82,300** are due this week. **29 are approved** and grouped into a payment batch. **2 are waiting** for approval from Priya R.",
       card: { title: "Accounts payable · this week", aside: "31 bills", link: ["Open the AP Agent", "/agents/ap"], rows: [["Approved and batched", "29 bills · 11 vendors", "₹13,96,800", ["Ready", "ok"]], ["Waiting for approval", "Pulse Media · Orion Tech", "₹85,500", ["Waiting", "info"]]] },
       follow: ["Month-end closing", "What needs my attention?"] },
+    /* Tool-backed answers: built per request by toolScript (dyn), so the draft reflects what was typed. */
+    threeway: { match: /3.?way|three.?way|\bpo\b.{0,30}\bgrn\b|\bgrn\b|purchase register/i, q: "Run the 3-way reconciliation", dyn: true },
+    invoice: { match: /\b(create|raise|make|prepare|new)\b.{0,20}\b(sales )?invoice\b|\binvoice\b.{0,12}\b(for|to)\b/i, q: "Create an invoice", dyn: true },
+    master: { match: /\b(create|add|new|set ?up)\b.{0,16}\b(ledger|group|item|master|vendor|supplier|customer)\b/i, q: "Create a ledger", dyn: true },
+    search: { match: /\b(find|search|look ?up|show( me)?|list|which|where)\b.{0,30}\b(ledgers?|groups?|items?|masters?|vendors?|suppliers?|customers?|vouchers?|entries|transactions|invoices?|bills?|payments?)\b/i, q: "Search vouchers", dyn: true },
     generic: { match: /.*/, q: "",
       steps: ["Looking through your books"],
       text: "I'm not sure what to do with that yet. Here is what I can take on right now, or describe a task you'd like me to automate.",
       follow: ["Work the Inbox with me", "What needs my attention?", "Automate a task"] }
   };
-  var PICK_ORDER = ["dups", "attention", "gst", "bank", "month", "ap", "inbox"];
+  var PICK_ORDER = ["dups", "threeway", "invoice", "master", "search", "attention", "gst", "bank", "month", "ap", "inbox"];
   var KIND2SC = { inv: "inbox", ap: "ap", bank: "bank", gst: "gst", month: "month", dups: "dups" };
   var HOME = [["Review invoices", "Find invoices that need your attention", "inbox"], ["Find duplicates", "Identify possible duplicate bills", "dups"], ["Reconcile banking", "Find unmatched transactions", "bank"], ["Check GST", "Find GST mismatches and missing information", "gst"], ["Review AP", "See pending accounts payable work", "ap"], ["Month-end closing", "Check what is still incomplete", "month"]];
   var EXACT = {}; Object.keys(SC).forEach(function (k) { if (SC[k].q) EXACT[SC[k].q] = k; }); HOME.forEach(function (h) { EXACT[h[0]] = h[2]; });
-  EXACT["Explain this document"] = "doc"; EXACT["Automate a task"] = "auto";
+  EXACT["Explain this document"] = "doc"; EXACT["Automate a task"] = "auto"; EXACT["Use the sample workbook"] = "threeway"; EXACT["3-way reconciliation"] = "threeway";
+
+  /* ---------- tools and skills (prototype data behind Search Masters / Search Vouchers / Excel Reader) ---------- */
+  var MASTERS = [["Dell India Pvt Ltd", "Ledger", "Sundry Creditors", "29AAACD1234K1Z5"], ["Theta Hotels Pvt Ltd", "Ledger", "Sundry Debtors", "29AABCT5678P1Z3"], ["Nandini Foods LLP", "Ledger", "Sundry Debtors", ""], ["Amazon Web Services India", "Ledger", "Sundry Creditors", "29AAICA4396L1ZH"], ["Pegasus Logistics Pvt Ltd", "Ledger", "Sundry Creditors", "27AAHFP9012K1Z2"], ["Nova Logistics", "Ledger", "Sundry Creditors", "29AAFCN2211R1Z6"], ["Cloud Services", "Ledger", "Indirect Expenses", ""], ["Fixed Assets - Hardware", "Ledger", "Fixed Assets", ""], ["Sales — Petroleum Products", "Ledger", "Sales Accounts", ""], ["Sales — Edible Oils", "Ledger", "Sales Accounts", ""], ["Sundry Creditors", "Group", "Current Liabilities", ""], ["Sundry Debtors", "Group", "Current Assets", ""], ["Furnace oil", "Item", "Petroleum Products · KL · 18% GST", ""], ["Refined sunflower oil", "Item", "Edible Oils · case · 5% GST", ""], ["Packaging material", "Item", "Consumables · nos · 18% GST", ""]];
+  var VOUCHERS = [["PUR/25-26/041", "Purchase", "Dell India Pvt Ltd", "12 May 2026", "₹76,425"], ["SAL/25-26/0215", "Sales", "Nandini Foods LLP", "14 May 2026", "₹1,54,816"], ["SAL/25-26/0214", "Sales", "Theta Hotels Pvt Ltd", "12 May 2026", "₹4,86,832"], ["SAL/25-26/0208", "Sales", "Theta Hotels Pvt Ltd", "28 Apr 2026", "₹2,98,628"], ["PAY/25-26/118", "Payment", "Amazon Web Services India", "6 Jun 2026", "₹2,18,904"], ["PUR/25-26/047", "Purchase", "Stellar Refunds Pvt Ltd", "21 May 2026", "₹18,900"], ["JV/25-26/074", "Journal", "Internal adjustment", "12 May 2026", "₹41,200"], ["PUR/25-26/030", "Purchase", "Zeta Services LLP", "8 Sep 2026", "₹12,600"]];
+  var ITEMS = { furnace: ["Furnace oil", "KL", 34200, 18, "Sales — Petroleum Products"], sunflower: ["Refined sunflower oil", "case", 328, 5, "Sales — Edible Oils"], packaging: ["Packaging material", "nos", 120, 18, "Sales — Consumables"] };
+  var POLICY_DEFAULT = "1. Purchase bills post only after a 3-way match of PO, GRN and invoice. Tolerance per line: ₹100 or 1%, whichever is lower.\n2. Expenses above ₹10,000 need a cost centre.\n3. Input GST is claimed only when the bill appears in GSTR-2B.\n4. Sales invoices take the next number in SAL/25-26. Furnace oil is taxed at 18%, edible oils at 5%.\n5. New vendors and customers need a GSTIN before their first voucher.\n6. Depreciation is straight-line and posted quarterly.";
+  function policyLine(n) { var t = (ST && ST.policy) || POLICY_DEFAULT, m = t.split(/\n/).filter(function (l) { return l.trim(); })[n - 1]; return m ? m.replace(/^\d+\.\s*/, "") : ""; }
+  function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  function today() { var d = new Date(), M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; return d.getDate() + " " + M[d.getMonth()] + " " + d.getFullYear(); }
+  function findMaster(text, under) { var t = text.toLowerCase(); return MASTERS.filter(function (m) { return (!under || m[2] === under) && t.indexOf(m[0].split(" ")[0].toLowerCase()) > -1; })[0]; }
+  function toolScript(key, text, did, file) {
+    var s = { steps: [], follow: ["What needs my attention?", "Work the Inbox with me"], fields: [], checks: [], decide: null, draft: null }, k = "draft:" + did;
+    if (key === "invoice") {
+      var cust = findMaster(text, "Sundry Debtors"), newCust = null;
+      if (!cust) { var mm = text.match(/\b(?:for|to)\s+([A-Z][\w&.'-]*(?:\s+(?:[A-Z][\w&.'-]*|Pvt|Ltd|LLP))*)/); if (mm) newCust = mm[1].replace(/[.,]$/, ""); }
+      var cname = cust ? cust[0] : newCust || "Theta Hotels Pvt Ltd";
+      var it = /furnace/i.test(text) ? ITEMS.furnace : /sunflower|edible/i.test(text) ? ITEMS.sunflower : /packag/i.test(text) ? ITEMS.packaging : (cname === "Nandini Foods LLP" ? ITEMS.sunflower : ITEMS.furnace);
+      var qm = text.match(/(\d+)\s*(kl|cases?|nos|units?)/i), qty = qm ? +qm[1] : (it === ITEMS.furnace ? 12 : 400);
+      var am = text.match(/₹\s?([\d,]+)|rs\.?\s?([\d,]+)|\b([\d,]{4,})\b/i), sub = am ? +((am[1] || am[2] || am[3]).replace(/,/g, "")) : qty * it[2], gst = Math.round(sub * it[3] / 100), tot = sub + gst;
+      s.steps = [["Accounting policy", cap(policyLine(4) || "Reading how sales invoices are raised")], ["Search Masters", "Customer: " + cname + (cust ? " (found, " + (cust[3] || "no GSTIN") + ")" : " (not in masters yet)")], ["Search Masters", "Item: " + it[0] + " · ₹" + it[2].toLocaleString("en-IN") + " per " + it[1] + " · " + it[3] + "% GST"], ["Search Vouchers", "Last sales invoice: SAL/25-26/0215"]];
+      s.text = "Here is the draft invoice for **" + cname + "**: **" + inr(tot) + "** including " + it[3] + "% GST." + (cust ? "" : " " + cname + " is not in your masters yet, so I will create the customer ledger first.") + " Nothing is posted until you create it.";
+      s.draft = { title: "Sales invoice · SAL/25-26/0216", key: k, tool: "Create Invoice", btn: "Create invoice", rows: [["Customer", cname + (cust ? "" : " (new)")], ["Date", today()], ["Item", qty + " " + it[1] + " " + it[0] + " @ ₹" + it[2].toLocaleString("en-IN") + " · " + it[4]], ["Subtotal", inr(sub)], ["GST " + it[3] + "%", inr(gst)], ["Total", inr(tot)]],
+        run: (cust ? [] : [["Create Master", "Creating customer ledger " + cname + " under Sundry Debtors"]]).concat([["Create Invoice", "Posting SAL/25-26/0216 for " + inr(tot)]]), done: "Invoice **SAL/25-26/0216** created in Sales for " + inr(tot) + ". It is posted to " + cname + "'s ledger and ready to send.", open: "Open in Sales" };
+      s.follow = ["Search vouchers for " + cname.split(" ")[0], "Create an invoice"];
+    } else if (key === "master") {
+      var kind = /\b(vendor|supplier|creditor)\b/i.test(text) ? ["Ledger", "Sundry Creditors"] : /\b(customer|debtor)\b/i.test(text) ? ["Ledger", "Sundry Debtors"] : /\b(item|stock|product)\b/i.test(text) ? ["Item", "Consumables"] : /\bgroup\b/i.test(text) ? ["Group", "Current Liabilities"] : ["Ledger", "Indirect Expenses"];
+      var nm = text.match(/(?:for|called|named)\s+["“]?(.+?)["”]?(?:\s+under\s+(.+?))?\s*[.?]?$/i), name = nm ? nm[1].trim() : (kind[0] === "Item" ? "Lubricants" : "New vendor"), under = nm && nm[2] ? cap(nm[2].trim()) : kind[1];
+      var gm = text.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]\d[A-Z\d]{2}\b/), gstin = gm ? gm[0] : "";
+      var exists = MASTERS.filter(function (m) { return m[0].toLowerCase() === name.toLowerCase(); })[0];
+      s.steps = [["Search Masters", "Checking whether “" + name + "” already exists"], ["Accounting policy", cap(policyLine(5) || "Checking the rules for new masters")]];
+      if (exists) { s.text = "**" + exists[0] + "** already exists as a " + exists[1].toLowerCase() + " under " + exists[2] + ". I have not created a second one."; s.fields = [["Name", exists[0]], ["Type", exists[1]], ["Under", exists[2]], ["GSTIN", exists[3] || "Not set"]]; s.follow = ["Search vouchers for " + exists[0].split(" ")[0], "Create a ledger"]; return s; }
+      var needsGst = kind[0] === "Ledger" && /Sundry/.test(under) && !gstin;
+      s.text = "Here is the " + kind[0].toLowerCase() + " I will create." + (needsGst ? " Your policy asks for a GSTIN before the first voucher, so I will mark it as pending." : "") + " Nothing is saved until you confirm.";
+      s.draft = { title: kind[0] + " · draft", key: k, tool: "Create Master", btn: "Create " + kind[0].toLowerCase(), rows: [["Name", name], ["Type", kind[0]], ["Under", under]].concat(kind[0] === "Ledger" && /Sundry/.test(under) ? [["GSTIN", gstin || "Pending · add before the first voucher"], ["Opening balance", "₹0"]] : kind[0] === "Item" ? [["Unit", "nos"], ["GST", "18%"]] : []),
+        run: [["Create Master", "Creating " + kind[0].toLowerCase() + " “" + name + "” under " + under]], done: kind[0] + " **" + name + "** created under " + under + ". It is available in vouchers now.", open: "Open in Masters" };
+      s.follow = ["Create an invoice", "Search ledgers"];
+    } else if (key === "search") {
+      var masters = /\b(ledgers?|groups?|items?|masters?|vendors?|suppliers?|customers?)\b/i.test(text) && !/\b(vouchers?|entries|transactions|payments?)\b/i.test(text);
+      var q = text.replace(/\b(find|search|look ?up|show( me)?|list|which|where|all|the|me|my|of|in|for|is|are|ledgers?|groups?|items?|masters?|vendors?|suppliers?|customers?|vouchers?|entries|transactions|invoices?|bills?|payments?|posted|from|to|with|a|an|and)\b/gi, " ").replace(/[?.]/g, "").trim().toLowerCase();
+      var toks = q.split(/\s+/).filter(Boolean), tool = masters ? "Search Masters" : "Search Vouchers", pool = masters ? MASTERS : VOUCHERS;
+      var hits = toks.length ? pool.filter(function (r) { var line = r.join(" ").toLowerCase(); return toks.some(function (t) { return line.indexOf(t) > -1; }); }) : pool;
+      s.steps = [[tool, toks.length ? "Query: “" + q + "”" : "Listing everything"], [tool, hits.length + " of " + pool.length + " " + (masters ? "masters" : "vouchers") + " match"]];
+      var shown = (hits.length ? hits : pool).slice(0, 6);
+      s.text = hits.length ? "**" + hits.length + " " + (masters ? "master" : "voucher") + (hits.length > 1 ? "s" : "") + "** match" + (toks.length ? " “" + q + "”" : "") + "." : "Nothing matches “" + q + "” exactly. Here are the nearest " + (masters ? "masters" : "vouchers") + ".";
+      s.card = { title: tool + (toks.length ? " · " + q : ""), aside: hits.length + " result" + (hits.length === 1 ? "" : "s"), rows: masters ? shown.map(function (m) { return [m[0], m[2] + (m[3] ? " · " + m[3] : ""), m[1], [m[1], "info"]]; }) : shown.map(function (v) { return [v[0] + " · " + v[2], v[1] + " · " + v[3], v[4], ["Posted", "ok"]]; }) };
+      s.follow = masters ? ["Search vouchers", "Create a ledger"] : ["Search ledgers", "Create an invoice"];
+    } else if (key === "threeway") {
+      if (!file) {
+        s.steps = [["Accounting policy", cap(policyLine(1) || "Reading the 3-way match rule")]];
+        s.text = "I match **PO, GRN and invoice** line by line. Attach the purchase register workbook (one sheet each for PO, GRN and invoices) with the + button, or try it on the sample.";
+        s.follow = ["Use the sample workbook", "What needs my attention?"];
+        return s;
+      }
+      s.steps = [["Excel Reader", "Reading " + file + " · sheets PO (42 rows), GRN (40 rows), Invoices (41 rows)"], ["Skill · 3-way reconciliation", "Matching PO → GRN → invoice by PO number and line"], ["Accounting policy", cap(policyLine(1) || "Applying the tolerance rule")], ["Search Vouchers", "Checking which invoices are already posted"]];
+      s.text = "**42 PO lines** checked from " + file + ". **34 match** on quantity and price, **5 differ** beyond your tolerance and **3 invoices have no GRN** yet, so I have held them.";
+      s.card = { title: "3-way reconciliation · September", aside: "8 need you", rows: [["Matched", "34 lines within tolerance · ready to post", "₹28,41,200", ["Ready", "ok"]], ["Quantity differs", "GRN short on 3 lines · Nova Logistics, Sigma Packaging", "₹1,12,400", ["Check", "warn"]], ["Price differs", "2 lines billed 2% to 4% above the PO rate · Dell India", "₹38,900", ["Check", "warn"]], ["No GRN yet", "3 invoices received before the goods · Orion Tech, Pulse Media", "₹1,81,050", ["Held", "bad"]]] };
+      s.decide = { key: "3way:" + did, btns: [["Post the 34 matched bills", "posted", "nc-pri"], ["Hold everything until I check", "held", ""]], msgs: { posted: "34 matched bills posted. The 8 others stay in Inbox with a note on what differs.", held: "Held. Nothing is posted; all 42 stay in Inbox." } };
+      s.follow = ["What needs my attention?", "Search vouchers"];
+    }
+    return s;
+  }
 
   /* ---------- page context: the document the user has open (prototype data mirrored from the app's inbox) ---------- */
   var DOCS = {
@@ -172,8 +238,8 @@
     return s;
   }
   /* Quick actions offered while typing in the composer. */
-  var ALIAS = { "Reconcile banking": "bank statement unmatched transactions", "Check GST": "gstr itc mismatch tax", "Review AP": "payable payments due vendors pay", "Month-end closing": "close checklist period", "Find duplicates": "duplicate bills copies", "Review invoices": "invoice bills new", "Work the Inbox with me": "inbox bills read clear", "What needs my attention?": "attention waiting blocked exceptions pending", "Automate a task": "agent schedule every workflow automation remind daily weekly", "Explain this document": "explain document file summarise summarize what is this" };
-  function quickList() { var q = HOME.map(function (c) { return c[0]; }); q.push("Work the Inbox with me", "What needs my attention?", "Automate a task"); if (CTX) q.unshift("Explain this document"); return q; }
+  var ALIAS = { "Reconcile banking": "bank statement unmatched transactions", "Check GST": "gstr itc mismatch tax", "Review AP": "payable payments due vendors pay", "Month-end closing": "close checklist period", "Find duplicates": "duplicate bills copies", "Review invoices": "invoice bills new", "Work the Inbox with me": "inbox bills read clear", "What needs my attention?": "attention waiting blocked exceptions pending", "Automate a task": "agent schedule every workflow automation remind daily weekly", "Explain this document": "explain document file summarise summarize what is this", "Create an invoice": "create raise new sales invoice bill customer", "Create a ledger": "create add new ledger master vendor customer item group", "Search vouchers": "find search look up voucher entries transactions payments", "Search ledgers": "find search look up ledger masters vendor customer item", "3-way reconciliation": "three way po grn match purchase register excel" };
+  function quickList() { var q = HOME.map(function (c) { return c[0]; }); q.push("Work the Inbox with me", "What needs my attention?", "Create an invoice", "Create a ledger", "Search vouchers", "Search ledgers", "3-way reconciliation", "Automate a task"); if (CTX) q.unshift("Explain this document"); return q; }
   function inr(n) { var t = String(n), last = t.slice(-3), rest = t.slice(0, -3); return "₹" + (rest ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," : "") + last; }
   var SEED = [
     { id: 1, title: "Work the Inbox with me", group: "Today", when: "9:12 am", key: "inbox" },
@@ -224,7 +290,7 @@
   function titleOf(text) { return text.length > 34 ? text.slice(0, 32) + "…" : text; }
 
   /* The Neo workspace (sidebar + screens) is the Neo page's own code, loaded on demand on product pages. */
-  var NEO_V = "30";
+  var NEO_V = "31";
   function loadWS(cb) {
     if (window.NeoWorkspace) return cb(null);
     if (loadWS.failed) return cb(loadWS.failed);
@@ -342,9 +408,14 @@
     function aiEl() { var r = el('<div class="nc-ai">' + AV + '<div class="nc-body"><span class="nc-sr">Neo says: </span></div></div>'); return { root: r, body: r.querySelector(".nc-body") }; }
     function trailEl(steps, secs) {
       var det = el('<details class="nc-trail"><summary>Checked ' + steps.length + " source" + (steps.length > 1 ? "s" : "") + (secs ? " · " + secs + "s" : "") + '</summary><ul class="nc-steps"></ul></details>');
-      steps.forEach(function (s) { det.querySelector("ul").append(el('<li class="done"><span class="nc-ic">' + TICK + "</span><span>" + esc(s) + "</span></li>")); });
+      steps.forEach(function (s) { det.querySelector("ul").append(el('<li class="done"><span class="nc-ic">' + TICK + "</span>" + stepHTML(s) + "</li>")); });
+      det.querySelector("summary").firstChild.textContent = trailLabel(steps, secs);
       return det;
     }
+    /* A step is a string, or [tool, text] when Neo used a named tool or skill. */
+    function stepHTML(st) { return Array.isArray(st) ? '<span class="nc-tool">' + esc(st[0]) + "</span><span>" + esc(st[1]) + "</span>" : "<span>" + esc(st) + "</span>"; }
+    function stepText(st) { return Array.isArray(st) ? st[0] + ": " + st[1] : st; }
+    function trailLabel(steps, secs) { var tools = steps.filter(Array.isArray).length; return (tools ? "Used " + tools + " tool" + (tools > 1 ? "s" : "") : "Checked " + steps.length + " source" + (steps.length > 1 ? "s" : "")) + (secs ? " · " + secs + "s" : ""); }
     function cardEl(c, animate) {
       var card = el('<div class="nc-card"><h3><span>' + esc(c.title) + "</span><span>" + esc(c.aside) + "</span></h3></div>");
       c.rows.forEach(function (d, i) {
@@ -395,8 +466,33 @@
       }
       draw(); return box;
     }
+    /* A draft Neo prepared with a write tool: the user confirms, the tool runs visibly, the result is kept in billState. */
+    function draftEl(d) {
+      var card = el('<div class="nc-card nc-plan"><h3><span>' + esc(d.title) + '</span><span class="nc-tool">' + esc(d.tool) + "</span></h3></div>");
+      d.rows.forEach(function (r) { card.append(el('<div class="nc-row" style="animation:none"><div class="nc-n">' + esc(r[0]) + '</div><div class="nc-m">' + esc(r[1]) + "</div></div>")); });
+      var foot = el('<div class="nc-cfoot" data-draft></div>'); card.append(foot);
+      function settled() { foot.innerHTML = ""; foot.append(el('<span class="nc-okline">' + TICK.replace('class="nc-tick"', 'class="nc-tick-big"') + rich(plain(d.done)) + "</span>")); var a = el('<a class="nc-link" href="' + BASE + '/inbox/">' + esc(d.open) + "</a>"); foot.append(a); }
+      function draw() {
+        if (ST.billState[d.key] === "created") return settled();
+        foot.innerHTML = ""; foot.append(el('<span class="nc-m">Draft · not saved yet</span>'));
+        var ok = el('<button class="nc-btn nc-sm nc-pri" type="button">' + esc(d.btn) + "</button>"), no = el('<button class="nc-btn nc-sm" type="button">Discard</button>');
+        ok.onclick = function () { runDraft(); }; no.onclick = function () { ST.billState[d.key] = "discarded"; save(); foot.innerHTML = '<span class="nc-m">Draft discarded. Nothing was created.</span>'; say("Draft discarded."); };
+        foot.append(ok, no);
+      }
+      function runDraft() {
+        foot.innerHTML = ""; var ul = el('<ul class="nc-steps"></ul>'); foot.append(ul); var i = 0;
+        (function next() {
+          if (i >= d.run.length) { ST.billState[d.key] = "created"; save(); settled(); say(plain(d.done)); down(); return; }
+          var st = d.run[i++], li = el('<li><span class="nc-ic"><span class="nc-ring"></span></span>' + stepHTML(st).replace(/<span>/, '<span class="nc-shim">') + "</li>"); ul.append(li); say(stepText(st)); down();
+          setTimeout(function () { li.className = "done"; li.innerHTML = '<span class="nc-ic">' + TICK + "</span>" + stepHTML(st); next(); }, 750);
+        })();
+      }
+      if (ST.billState[d.key] === "discarded") { foot.innerHTML = '<span class="nc-m">Draft discarded. Nothing was created.</span>'; } else draw();
+      return card;
+    }
     function answerExtras(body, sc, animate) {
       if (sc.card) body.append(cardEl(sc.card, animate));
+      if (sc.draft) body.append(draftEl(sc.draft));
       if (sc.fields && sc.fields.length) body.append(fieldsEl(sc.fields));
       if (sc.checks && sc.checks.length) body.append(checksEl(sc.checks));
       if (sc.decide) body.append(decideEl(sc.decide));
@@ -464,7 +560,7 @@
       msgs.forEach(function (m, i) {
         if (m.u) { thread.append(userEl(m.u)); lastUser = m.u; return; }
         var a = m.a, ai = aiEl(); lastBody = ai.body; lastAnswer = null; lastCreated = null;
-        if (a.k === "answer") { var sc = a.key === "doc" ? docScript(a.doc) : (SC[a.key] || SC.generic); ai.body.append(trailEl(sc.steps, a.secs)); ai.body.append(el('<p class="nc-ans">' + rich(sc.text) + "</p>")); answerExtras(ai.body, sc, false); lastAnswer = sc; }
+        if (a.k === "answer") { var sc = a.key === "doc" ? docScript(a.doc) : SC[a.key] && SC[a.key].dyn ? toolScript(a.key, a.q || "", a.did, a.file) : (SC[a.key] || SC.generic); ai.body.append(trailEl(sc.steps, a.secs)); ai.body.append(el('<p class="nc-ans">' + rich(sc.text) + "</p>")); answerExtras(ai.body, sc, false); lastAnswer = sc; }
         else if (a.k === "say") ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>"));
         else if (a.k === "plan") { ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>"), planEl(a.name, a.rows)); }
         else if (a.k === "created") { ai.body.append(el('<p class="nc-ans">' + rich(a.text) + "</p>")); lastCreated = a.id; }
@@ -506,7 +602,7 @@
       var h = new Date().getHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
       var e = el('<div class="nc-empty"><h2 class="nc-hi">' + hi + ', Soundar <span aria-hidden="true">👋</span></h2><p class="nc-sub" data-sum></p><p class="nc-cap" id="nc-capt-' + mode + '">Today</p><div class="nc-brief" data-brief role="group" aria-labelledby="nc-capt-' + mode + '"></div><p class="nc-cap" id="nc-cap-' + mode + '">Ask Neo to</p><div class="nc-chips nc-hchips" role="group" aria-labelledby="nc-cap-' + mode + '"></div><div class="nc-sgrid" role="group" aria-labelledby="nc-cap-' + mode + '"></div><button class="nc-homelink" type="button">Or ask Neo to automate a task</button></div>');
       HOME.forEach(function (c) { var b = el('<button class="nc-scard" type="button"><b>' + c[0] + "</b><span>" + c[1] + "</span></button>"); b.onclick = function () { start(c[0]); }; e.querySelector(".nc-sgrid").append(b); });
-      HOME.filter(function (c) { return c[2] !== "inbox"; }).map(function (c) { return c[0]; }).concat(["Automate a task"]).forEach(function (t) { var b = el('<button class="nc-chip" type="button">' + esc(t) + "</button>"); b.onclick = function () { start(t); }; e.querySelector(".nc-hchips").append(b); });
+      HOME.filter(function (c) { return c[2] !== "inbox"; }).map(function (c) { return c[0]; }).concat(["3-way reconciliation", "Create an invoice", "Automate a task"]).forEach(function (t) { var b = el('<button class="nc-chip" type="button">' + esc(t) + "</button>"); b.onclick = function () { start(t); }; e.querySelector(".nc-hchips").append(b); });
       e.querySelector(".nc-homelink").onclick = function () { start("Automate a task"); };
       thread.append(e); drawBrief(); drawLive();
       if (!window.NeoWorkspace) loadWS(function (err) { if (!err && thread.querySelector("[data-brief]")) drawBrief(); });
@@ -560,7 +656,10 @@
       if (flow) { flow = null; persistFlow(); }
       var key = o.key || (o.kind && SC[o.kind] ? o.kind : null) || exact || (CTX && DOC_RE.test(text) ? "doc" : null) || pick(text);
       if (key === "doc" && !CTX) key = "generic";
-      var docId = key === "doc" ? CTX.id : null, sc = key === "doc" ? docScript(docId) : SC[key], id = ++runId, failed = false;
+      var xl = !o.resume && o.files ? o.files.filter(function (f) { return /\.(xlsx?|csv)$/i.test(f); })[0] : (o.file || null);
+      if (xl && !exact) key = "threeway"; if (key === "threeway" && !xl && exact === "threeway" && text === "Use the sample workbook") xl = "PO-GRN-Invoice-Sep.xlsx";
+      var did = o.did || (ST.did = (ST.did || 0) + 1);
+      var docId = key === "doc" ? CTX.id : null, sc = key === "doc" ? docScript(docId) : SC[key].dyn ? toolScript(key, text, did, xl) : SC[key], id = ++runId, failed = false;
       ensureItem(text);
       if (!o.resume) { thread.append(userEl(text)); record({ u: text }); }
       var badFile = !o.resume && o.files ? o.files.filter(function (f) { return /\.(jpe?g|png)$/i.test(f); })[0] : null;
@@ -575,10 +674,10 @@
         think.remove();
         var ul = el('<ul class="nc-steps"></ul>'); ai.body.append(ul);
         for (var i = 0; i < sc.steps.length; i++) {
-          var li = el('<li><span class="nc-ic"><span class="nc-ring"></span></span><span class="nc-shim">' + esc(sc.steps[i]) + "</span></li>"); ul.append(li); say(sc.steps[i]); down();
+          var li = el('<li><span class="nc-ic"><span class="nc-ring"></span></span>' + stepHTML(sc.steps[i]).replace(/<span>/, '<span class="nc-shim">') + "</li>"); ul.append(li); say(stepText(sc.steps[i])); down();
           await sleep(800 + i * 100, id);
           if (badFile && i === Math.min(1, sc.steps.length - 1)) { li.className = "fail"; li.innerHTML = '<span class="nc-ic">' + CROSS + "</span><span>Could not read " + esc(badFile) + "</span>"; failed = true; break; }
-          li.className = "done"; li.innerHTML = '<span class="nc-ic">' + TICK + "</span><span>" + esc(sc.steps[i]) + "</span>";
+          li.className = "done"; li.innerHTML = '<span class="nc-ic">' + TICK + "</span>" + stepHTML(sc.steps[i]);
         }
         if (failed) {
           ai.root.classList.remove("nc-working"); ai.root.removeAttribute("aria-busy");
@@ -586,17 +685,17 @@
           setRunning(false); say("One file could not be read."); down(); return;
         }
         var secs = ((performance.now() - t0) / 1000).toFixed(1);
-        var det = el('<details class="nc-trail"><summary>Checked ' + sc.steps.length + " source" + (sc.steps.length > 1 ? "s" : "") + " · " + secs + "s</summary></details>");
+        var det = el('<details class="nc-trail"><summary>' + esc(trailLabel(sc.steps, secs)) + "</summary></details>");
         ul.replaceWith(det); det.append(ul);
         var sk = el('<div class="nc-skel" aria-hidden="true"><i></i><i></i></div>'); ai.body.append(sk); cur.sk = sk; down();
         await sleep(380, id); sk.remove(); cur.sk = null;
         var p = el('<p class="nc-ans" aria-hidden="true"></p>'); ai.body.append(p);
         await stream(p, sc.text, id, 22);
         p.removeAttribute("aria-hidden"); say(plain(sc.text));
-        if (sc.card || (sc.fields && sc.fields.length) || sc.decide) { await sleep(200, id); answerExtras(ai.body, sc, true); down(); await sleep((sc.card ? sc.card.rows.length * 40 : 0) + 300, id); }
+        if (sc.card || (sc.fields && sc.fields.length) || sc.decide || sc.draft) { await sleep(200, id); answerExtras(ai.body, sc, true); down(); await sleep((sc.card ? sc.card.rows.length * 40 : 0) + 300, id); }
         ai.body.append(followChips(sc)); down();
         ai.root.classList.remove("nc-working"); ai.root.removeAttribute("aria-busy");
-        record({ a: { k: "answer", key: key, doc: docId, secs: secs } }); cur.pending = false; setRunning(false);
+        record({ a: { k: "answer", key: key, doc: docId, secs: secs, q: SC[key] && SC[key].dyn ? text : undefined, did: SC[key] && SC[key].dyn ? did : undefined, file: xl || undefined } }); cur.pending = false; setRunning(false);
       } catch (e) { if (e !== "cancel") throw e; }
     }
     /* A short Neo message (used by the automation flow). `after` may append chips/cards; `store` is what the transcript keeps. */
@@ -815,6 +914,7 @@
   }
 
   window.NeoChat = { save: save, mount: mount, history: function () { return ST.hs; }, active: function () { return ST.active; }, setActive: function (id) { ST.active = id; save(); }, state: function () { return ST; },
-    live: function (w) { INSTANCES.forEach(function (i) { if (i.refreshLive) i.refreshLive(w); }); }, context: function () { return CTX; } };
+    live: function (w) { INSTANCES.forEach(function (i) { if (i.refreshLive) i.refreshLive(w); }); }, context: function () { return CTX; },
+    policy: function (t) { if (t !== undefined) { ST.policy = t; save(); } return ST.policy || POLICY_DEFAULT; }, policyDefault: POLICY_DEFAULT };
   if (!document.getElementById("app")) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", hostPanel); else hostPanel(); }
 })();
